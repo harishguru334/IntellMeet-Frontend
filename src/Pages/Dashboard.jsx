@@ -39,22 +39,22 @@ const Dashboard = () => {
     <div className="min-h-screen bg-linear-to-r from-slate-950 via-slate-900 to-slate-800 text-white">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         <div className="mb-8 flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            IntellMeet Meetings: Conference call service for virtual collaboration
+          <h1 className="!text-white text-3xl font-bold tracking-tight sm:text-4xl">
+            Meetings that get things done
           </h1>
           <p className="text-sm text-slate-400 sm:text-base">
-            Manage your meetings from one clean dashboard.
+            Video calls, Kanban boards, and AI-powered summaries — all in one place.
           </p>
           <button
             onClick={() => navigate("/kanban")}
-            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-semibold"
+            className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-sm font-semibold w-fit"
           >
             📋 Kanban Board
           </button>
         </div>
 
         <div className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:bg-white/7 sm:p-6 lg:p-8">
-          <h2 className="mb-4 text-xl font-semibold text-white">New Meeting</h2>
+          <h2 className="!text-white mb-4 text-xl font-semibold">New Meeting</h2>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
@@ -75,7 +75,7 @@ const Dashboard = () => {
         </div>
 
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold text-white">My Meetings</h2>
+          <h2 className="!text-white text-xl font-semibold">My Meetings</h2>
           <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-slate-300">
             {meetings.length} meeting{meetings.length !== 1 ? "s" : ""}
           </span>
@@ -83,7 +83,9 @@ const Dashboard = () => {
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {meetings.length === 0 ? (
-            <p className="text-slate-400">Koi meeting nahi hai abhi.</p>
+            <p className="text-slate-400 col-span-full text-center py-8">
+              No meetings yet. Start your first one above! 👆
+            </p>
           ) : (
             meetings.map((m) => (
               <div
