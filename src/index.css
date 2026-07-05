@@ -26,7 +26,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  @media (max-width: 100%) {
+  @media (max-width: 768px) {
     font-size: 16px;
   }
 }
@@ -57,7 +57,7 @@ body {
 
 #root {
   width: 1126px;
-  max-width: 100%;
+  max-width: 768px;
   margin: 0 auto;
   text-align: center;
   border-inline: 1px solid var(--border);
