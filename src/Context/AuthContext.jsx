@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import API from "../api/axios";
+import API from "../Api/Axios";
 
 const AuthContext = createContext();
 
@@ -7,12 +7,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // App load pe token check karo
   useEffect(() => {
     const token = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
     if (token && savedUser) {
       setUser(JSON.parse(savedUser));
+    } else if (token) {
+      setUser({ name: localStorage.getItem("userName") || "User" });
     }
     setLoading(false);
   }, []);
@@ -22,6 +23,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     setUser(data.user);
+      return data;   
   };
 
   const login = async (email, password) => {
@@ -29,6 +31,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     setUser(data.user);
+      return data;  
   };
 
   const logout = () => {
@@ -44,5 +47,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook
 export const useAuth = () => useContext(AuthContext);
