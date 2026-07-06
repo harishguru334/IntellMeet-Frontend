@@ -20,7 +20,19 @@ import {
   X,
   Captions,
   Share2,
+  Users,
+  Crown,
 } from "lucide-react";
+
+// JWT ke payload se userId nikalne ke liye (login aur OAuth dono ke liye kaam karta hai,
+// kyunki token hamesha { id: userId } carry karta hai)
+const getUserIdFromToken = (token) => {
+  try {
+    return JSON.parse(atob(token.split(".")[1]))?.id || null;
+  } catch {
+    return null;
+  }
+};
 
 const MeetingRoom = () => {
   const [recording, setRecording] = useState(false);
@@ -42,6 +54,7 @@ const MeetingRoom = () => {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const userName = localStorage.getItem("userName") || "User";
+  const userId = token ? getUserIdFromToken(token) : null;
 
   const [meeting, setMeeting] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -50,6 +63,12 @@ const MeetingRoom = () => {
   const [camOn, setCamOn] = useState(true);
   const [remoteStreams, setRemoteStreams] = useState([]);
   const [transcript, setTranscript] = useState("");
+  const [participants, setParticipants] = useState([]);
+  const [showParticipants, setShowParticipants] = useState(false);
+
+  // Meeting create karne wala hi host hota hai — Dashboard se "Start" dabane
+  // par backend host: req.user._id set kar deta hai, isliye yahan sirf compare karna hai.
+  const isHost = meeting && userId && String(meeting.host) === String(userId);
 
   const localVideoRef = useRef(null);
   const localStreamRef = useRef(null);
@@ -88,7 +107,7 @@ const MeetingRoom = () => {
           localVideoRef.current.srcObject = stream;
         }
 
-       const peer = new Peer({
+        const peer = new Peer({
           config: {
             iceServers: [
               { urls: "stun:stun.l.google.com:19302" },
@@ -122,18 +141,22 @@ const MeetingRoom = () => {
           console.log("My PeerJS ID:", peerId);
 
           socket.connect();
-          socket.emit("join-meeting", { meetingId: id, userName });
+          socket.emit("join-meeting", { meetingId: id, userName, userId });
           socket.emit("broadcast-peer-id", { meetingId: id, peerId, userName });
         });
 
         peer.on("call", (call) => {
           call.answer(localStreamRef.current);
           activeCallRef.current.push(call);
+          const remoteUserName = call.metadata?.userName || "Participant";
           call.on("stream", (remoteStream) => {
             setRemoteStreams((prev) => {
-              const exists = prev.find((s) => s.id === remoteStream.id);
+              const exists = prev.find((s) => s.peerId === call.peer);
               if (exists) return prev;
-              return [...prev, remoteStream];
+              return [
+                ...prev,
+                { peerId: call.peer, userName: remoteUserName, stream: remoteStream },
+              ];
             });
           });
         });
@@ -150,17 +173,40 @@ const MeetingRoom = () => {
               },
             ]);
 
-            const call = peer.call(remotePeerId, localStreamRef.current);
+            const call = peer.call(remotePeerId, localStreamRef.current, {
+              metadata: { userName },
+            });
             activeCallRef.current.push(call);
             call.on("stream", (remoteStream) => {
               setRemoteStreams((prev) => {
-                const exists = prev.find((s) => s.id === remoteStream.id);
+                const exists = prev.find((s) => s.peerId === remotePeerId);
                 if (exists) return prev;
-                return [...prev, remoteStream];
+                return [
+                  ...prev,
+                  { peerId: remotePeerId, userName: remoteUser, stream: remoteStream },
+                ];
               });
             });
           },
         );
+
+        // Jab koi participant meeting chhod de — uska video tile hata do
+        socket.on("user-left", ({ peerId: leftPeerId, userName: leftUser }) => {
+          setRemoteStreams((prev) => prev.filter((s) => s.peerId !== leftPeerId));
+          setMessages((prev) => [
+            ...prev,
+            {
+              type: "system",
+              message: `${leftUser || "A participant"} left`,
+              time: new Date().toLocaleTimeString(),
+            },
+          ]);
+        });
+
+        // Room mein abhi kaun-kaun connected hai — live Participants list ke liye
+        socket.on("room-users", (users) => {
+          setParticipants(users);
+        });
 
         socket.on("receive-message", (data) => {
           setMessages((prev) => [...prev, { type: "chat", ...data }]);
@@ -184,6 +230,8 @@ const MeetingRoom = () => {
       peerRef.current?.destroy();
 
       socket.off("user-peer-id");
+      socket.off("user-left");
+      socket.off("room-users");
       socket.off("receive-message");
       socket.disconnect();
     };
@@ -420,12 +468,55 @@ const MeetingRoom = () => {
       {/* Header */}
       <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-6 py-3 flex justify-between items-center">
         <div>
-          <h1 className="text-lg font-bold text-white">{meeting.title}</h1>
+          <h1 className="text-lg font-bold text-white flex items-center gap-2">
+            {meeting.title}
+            {isHost && (
+              <span className="flex items-center gap-1 bg-amber-500/15 text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-500/30">
+                <Crown className="h-3 w-3" />
+                Host
+              </span>
+            )}
+          </h1>
           <p className="text-slate-400 text-xs mt-0.5">
             Code: <span className="text-slate-300 font-mono">{meeting.meetingCode}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 relative">
+          <button
+            onClick={() => setShowParticipants((prev) => !prev)}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+          >
+            <Users className="h-4 w-4" />
+            {participants.length || 1}
+          </button>
+          {showParticipants && (
+            <div className="absolute top-12 right-28 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-20 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-800 font-semibold text-sm">
+                Participants ({participants.length || 1})
+              </div>
+              <div className="max-h-72 overflow-y-auto py-2">
+                {(participants.length ? participants : [{ userName, userId }]).map(
+                  (p, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between px-4 py-2 text-sm hover:bg-slate-800/60"
+                    >
+                      <span>
+                        {p.userName}
+                        {p.userId && String(p.userId) === String(userId) && " (You)"}
+                      </span>
+                      {meeting.host && String(p.userId) === String(meeting.host) && (
+                        <span className="flex items-center gap-1 text-amber-400 text-xs">
+                          <Crown className="h-3 w-3" />
+                          Host
+                        </span>
+                      )}
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
           <button
             onClick={shareInvite}
             className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
@@ -443,11 +534,11 @@ const MeetingRoom = () => {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* Video Area */}
-        <div className="flex-1 bg-slate-950/40 flex flex-col">
+        <div className="flex:[2] lg:flex-1 bg-slate-950/40 flex flex-col min-h-0">
           {/* Videos Grid */}
-          <div className="flex-1 p-4 grid grid-cols-2 gap-4 content-start">
+          <div className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start overflow-y-auto">
             {/* Local Video */}
             <div className="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden aspect-video shadow-lg">
               <video
@@ -464,8 +555,12 @@ const MeetingRoom = () => {
             </div>
 
             {/* Remote Videos */}
-            {remoteStreams.map((stream, i) => (
-              <RemoteVideo key={i} stream={stream} />
+            {remoteStreams.map((remote) => (
+              <RemoteVideo
+                key={remote.peerId}
+                stream={remote.stream}
+                userName={remote.userName}
+              />
             ))}
           </div>
 
@@ -560,7 +655,7 @@ const MeetingRoom = () => {
         </div>
 
         {/* Chat Sidebar */}
-        <div className="w-72 bg-slate-900/70 backdrop-blur-xl border-l border-slate-800 flex flex-col">
+        <div className="w-full lg:w-72 flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-[280px] lg:min-h-0">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center">
             <h2 className="font-semibold text-sm">Meeting chat</h2>
             <button
@@ -648,7 +743,7 @@ const MeetingRoom = () => {
 };
 
 // Remote Video Component
-const RemoteVideo = ({ stream }) => {
+const RemoteVideo = ({ stream, userName }) => {
   const videoRef = useRef(null);
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = stream;
@@ -658,7 +753,7 @@ const RemoteVideo = ({ stream }) => {
     <div className="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden aspect-video shadow-lg">
       <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
       <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-medium">
-        Participant
+        {userName || "Participant"}
       </div>
     </div>
   );
