@@ -655,11 +655,11 @@ const MeetingRoom = () => {
     );
 
   return (
-    <div className="h-screen w-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white flex flex-col overflow-hidden">
+    <div className="min-h-screen w-full bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white flex flex-col">
       {/* Header */}
-      <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-6 py-2.5 lg:py-3 flex justify-between items-center gap-2 shrink-0">
+      <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-6 py-2 flex justify-between items-center gap-2 shrink-0 sticky top-0 z-30">
         <div className="min-w-0">
-          <h1 className="text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 truncate">
+          <h1 className="text-base lg:text-lg font-bold text-white flex items-center gap-2 truncate">
             <span className="truncate">{meeting.title}</span>
             {isHost && (
               <span className="flex items-center gap-1 bg-amber-500/15 text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-500/30 shrink-0">
@@ -668,7 +668,7 @@ const MeetingRoom = () => {
               </span>
             )}
           </h1>
-          <p className="text-slate-400 text-xs mt-0.5 truncate">
+          <p className="text-slate-400 text-[11px] mt-0.5 truncate">
             Code:{" "}
             <span className="text-slate-300 font-mono">
               {meeting.meetingCode}
@@ -678,13 +678,13 @@ const MeetingRoom = () => {
         <div className="flex items-center gap-1.5 sm:gap-2 relative shrink-0">
           <button
             onClick={() => setShowParticipants((prev) => !prev)}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 sm:px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer"
           >
             <Users className="h-4 w-4" />
             {participants.length || 1}
           </button>
           {showParticipants && (
-            <div className="absolute top-12 right-0 w-56 max-w-[75vw] bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-20 overflow-hidden">
+            <div className="absolute top-11 right-0 w-56 max-w-[75vw] bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-20 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-800 font-semibold text-sm">
                 Participants ({participants.length || 1})
               </div>
@@ -717,14 +717,14 @@ const MeetingRoom = () => {
           )}
           <button
             onClick={shareInvite}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 sm:px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer"
           >
             <Share2 className="h-4 w-4" />
             <span className="hidden sm:inline">Share</span>
           </button>
           <button
             onClick={leaveMeeting}
-            className="flex items-center gap-1.5 bg-red-600/90 hover:bg-red-600 px-2.5 sm:px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-red-600/90 hover:bg-red-600 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-sm font-medium transition cursor-pointer"
           >
             <PhoneOff className="h-4 w-4" />
             <span className="hidden sm:inline">Leave</span>
@@ -732,12 +732,12 @@ const MeetingRoom = () => {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-4 p-4 min-h-0">
+      <div className="flex flex-col lg:flex-row flex-1 gap-4 p-4">
         {/* Video Area */}
-        <div className="flex-1 rounded-3xl lg:flex-1 bg-slate-950/40 flex flex-col min-h-0">
+        <div className="flex-1 rounded-3xl bg-slate-950/40 flex flex-col">
           {/* Videos Grid */}
           <div
-            className={`flex-1 min-h-0 p-4 grid gap-4 overflow-y-auto ${
+            className={`min-h-[60vh] p-4 grid gap-4 ${
               remoteStreams.length === 0
                 ? "grid-cols-1 place-content-center"
                 : remoteStreams.length === 1
@@ -776,7 +776,7 @@ const MeetingRoom = () => {
           </div>
 
           {/* Transcript Section */}
-          <div className="mx-4 mb-2 shrink-0">
+          <div className="mx-4 mb-2">
             <div className="flex gap-2 mb-2 flex-wrap">
               <button
                 onClick={isTranscribing ? stopTranscription : startTranscription}
@@ -811,7 +811,7 @@ const MeetingRoom = () => {
           </div>
 
           {/* Controls */}
-          <div className="bg-slate-900/70 backdrop-blur-xl border-t border-slate-800 py-3 sm:py-5 flex justify-center items-center gap-3 sm:gap-5 flex-wrap px-3 sm:px-4 shrink-0">
+          <div className="bg-slate-900/70 backdrop-blur-xl border-t border-slate-800 py-3 sm:py-5 flex justify-center items-center gap-3 sm:gap-5 flex-wrap px-3 sm:px-4 sticky bottom-0">
             {/* Group 1: Basic media controls */}
             <div className="flex gap-3 flex-wrap justify-center">
               <button
@@ -912,7 +912,7 @@ const MeetingRoom = () => {
         </div>
 
         {/* Chat Sidebar */}
-        <div className="w-full lg:w-[340px] xl:w-[380px] flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none overflow-hidden">
+        <div className="w-full lg:w-[340px] xl:w-[380px] bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-[400px] lg:min-h-0 overflow-hidden rounded-2xl lg:rounded-none">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center">
             <h2 className="font-semibold text-sm">Meeting chat</h2>
             <button
@@ -954,7 +954,7 @@ const MeetingRoom = () => {
             </div>
           )}
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2 max-h-[50vh] lg:max-h-none">
             {messages.map((msg, i) => (
               <div key={i}>
                 {msg.type === "system" ? (
