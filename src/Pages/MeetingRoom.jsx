@@ -737,7 +737,7 @@ const MeetingRoom = () => {
         <div className="flex-1 rounded-3xl lg:flex-1 bg-slate-950/40 flex flex-col min-h-0">
           {/* Videos Grid */}
           <div
-            className={`flex-1 min-h-[45vh] sm:min-h-[300px] p-4 grid gap-4 overflow-y-auto ${
+            className={`flex-1 min-h-0 p-4 grid gap-4 overflow-y-auto ${
               remoteStreams.length === 0
                 ? "grid-cols-1 place-content-center"
                 : remoteStreams.length === 1
