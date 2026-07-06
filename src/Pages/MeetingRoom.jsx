@@ -451,22 +451,20 @@ const MeetingRoom = () => {
       if (finalText) setTranscript((prev) => prev + finalText);
     };
 
-   recognition.onerror = (e) => {
-  if (e.error === "no-speech") {
-    // Silence hai, koi problem nahi — chup chap ignore karo
-    return;
-  }
-  console.error("Speech error:", e.error);
-};
+    recognition.onerror = (e) => {
+      if (e.error === "no-speech") {
+        return;
+      }
+      console.error("Speech error:", e.error);
+    };
 
-recognition.onend = () => {
-  if (isTranscribingRef.current) {
-    // Thoda delay de do restart se pehle, taaki tight loop na bane
-    setTimeout(() => {
-      if (isTranscribingRef.current) recognition.start();
-    }, 300);
-  }
-};
+    recognition.onend = () => {
+      if (isTranscribingRef.current) {
+        setTimeout(() => {
+          if (isTranscribingRef.current) recognition.start();
+        }, 300);
+      }
+    };
     recognition.start();
     recognitionRef.current = recognition;
     isTranscribingRef.current = true;
@@ -484,14 +482,12 @@ recognition.onend = () => {
     try {
       recordedChunksRef.current = [];
 
-      // Canvas banate hain jispe local + sabke remote video ek grid mein draw honge
       const canvas = document.createElement("canvas");
       canvas.width = 1280;
       canvas.height = 720;
       const ctx = canvas.getContext("2d");
       recordingCanvasRef.current = canvas;
 
-      // Sabka audio (apna + sab remote participants ka) ek stream mein mix karte hain
       const audioContext = new (
         window.AudioContext || window.webkitAudioContext
       )();
@@ -661,7 +657,7 @@ recognition.onend = () => {
     <div className="h-screen w-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white flex flex-col overflow-hidden">
       {/* Header */}
       {/* Header */}
-      <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-6 py-3 flex justify-between items-center gap-2">
+      <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-6 py-2.5 lg:py-3 flex justify-between items-center gap-2">
         <div className="min-w-0">
           <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 truncate">
             <span className="truncate">{meeting.title}</span>
@@ -740,7 +736,15 @@ recognition.onend = () => {
         {/* Video Area */}
         <div className="flex-[2] lg:flex-1 bg-slate-950/40 flex flex-col min-h-0">
           {/* Videos Grid */}
-          <div className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start overflow-y-auto">
+          <div
+            className={`flex-1 p-4 grid gap-4 overflow-y-auto ${
+              remoteStreams.length === 0
+                ? "grid-cols-1 place-content-center"
+                : remoteStreams.length === 1
+                  ? "grid-cols-1 sm:grid-cols-2 content-center"
+                  : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 content-start"
+            }`}
+          >
             {/* Local Video */}
             <div className="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden aspect-video shadow-lg">
               <video
@@ -795,90 +799,107 @@ recognition.onend = () => {
           </div>
 
           {/* Controls */}
-          <div className="bg-slate-900/70 backdrop-blur-xl border-t border-slate-800 py-4 flex justify-center gap-3 flex-wrap px-4">
-            <button
-              onClick={toggleMic}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
-                micOn
-                  ? "bg-slate-700 hover:bg-slate-600"
-                  : "bg-red-600 hover:bg-red-700"
-              }`}
-            >
-              {micOn ? (
-                <Mic className="h-4 w-4" />
-              ) : (
-                <MicOff className="h-4 w-4" />
-              )}
-              {micOn ? "Mute" : "Unmute"}
-            </button>
-            <button
-              onClick={toggleCam}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
-                camOn
-                  ? "bg-slate-700 hover:bg-slate-600"
-                  : "bg-red-600 hover:bg-red-700"
-              }`}
-            >
-              {camOn ? (
-                <Video className="h-4 w-4" />
-              ) : (
-                <VideoOff className="h-4 w-4" />
-              )}
-              {camOn ? "Cam off" : "Cam on"}
-            </button>
-            <button
-              onClick={isScreenSharing ? stopScreenShare : startScreenShare}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
-                isScreenSharing
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-emerald-600 hover:bg-emerald-700"
-              }`}
-            >
-              {isScreenSharing ? (
-                <ScreenShareOff className="h-4 w-4" />
-              ) : (
-                <ScreenShare className="h-4 w-4" />
-              )}
-              {isScreenSharing ? "Stop sharing" : "Share screen"}
-            </button>
-            <button
-              onClick={recording ? stopRecording : startRecording}
-              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
-                recording
-                  ? "bg-red-500 hover:bg-red-600 animate-pulse"
-                  : "bg-orange-600 hover:bg-orange-700"
-              }`}
-            >
-              {recording ? (
-                <Square className="h-4 w-4" />
-              ) : (
-                <Circle className="h-4 w-4" />
-              )}
-              {recording ? "Stop rec" : "Record"}
-            </button>
-            <button
-              onClick={() =>
-                navigate(
-                  `/meeting/${id}/summary?transcript=${encodeURIComponent(transcript)}`,
-                )
-              }
-              className="flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-2 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-indigo-500 cursor-pointer"
-            >
-              <Sparkles className="h-4 w-4" />
-              AI summary
-            </button>
-            <button
-              onClick={leaveMeeting}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer"
-            >
-              <PhoneOff className="h-4 w-4" />
-              Leave
-            </button>
-          </div>
-        </div>
+         {/* Controls */}
+<div className="bg-slate-900/70 backdrop-blur-xl border-t border-slate-800 py-4 flex justify-center items-center gap-3 flex-wrap px-4">
+  {/* Group 1: Basic media controls */}
+  <div className="flex gap-3 flex-wrap justify-center">
+    <button
+      onClick={toggleMic}
+      className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
+        micOn
+          ? "bg-slate-700 hover:bg-slate-600"
+          : "bg-red-600 hover:bg-red-700"
+      }`}
+    >
+      {micOn ? (
+        <Mic className="h-4 w-4" />
+      ) : (
+        <MicOff className="h-4 w-4" />
+      )}
+      <span className="hidden sm:inline">{micOn ? "Mute" : "Unmute"}</span>
+    </button>
 
+    <button
+      onClick={toggleCam}
+      className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
+        camOn
+          ? "bg-slate-700 hover:bg-slate-600"
+          : "bg-red-600 hover:bg-red-700"
+      }`}
+    >
+      {camOn ? (
+        <Video className="h-4 w-4" />
+      ) : (
+        <VideoOff className="h-4 w-4" />
+      )}
+      <span className="hidden sm:inline">{camOn ? "Cam off" : "Cam on"}</span>
+    </button>
+
+    <button
+      onClick={isScreenSharing ? stopScreenShare : startScreenShare}
+      className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
+        isScreenSharing
+          ? "bg-red-600 hover:bg-red-700"
+          : "bg-emerald-600 hover:bg-emerald-700"
+      }`}
+    >
+      {isScreenSharing ? (
+        <ScreenShareOff className="h-4 w-4" />
+      ) : (
+        <ScreenShare className="h-4 w-4" />
+      )}
+      <span className="hidden sm:inline">
+        {isScreenSharing ? "Stop sharing" : "Share screen"}
+      </span>
+    </button>
+  </div>
+
+  {/* Divider - sirf sm aur upar dikhega */}
+  <div className="hidden sm:block w-px h-8 bg-slate-700 mx-1" />
+
+  {/* Group 2: Recording, AI, Leave */}
+  <div className="flex gap-3 flex-wrap justify-center">
+    <button
+      onClick={recording ? stopRecording : startRecording}
+      className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
+        recording
+          ? "bg-red-500 hover:bg-red-600 animate-pulse"
+          : "bg-orange-600 hover:bg-orange-700"
+      }`}
+    >
+      {recording ? (
+        <Square className="h-4 w-4" />
+      ) : (
+        <Circle className="h-4 w-4" />
+      )}
+      <span className="hidden sm:inline">
+        {recording ? "Stop rec" : "Record"}
+      </span>
+    </button>
+
+    <button
+      onClick={() =>
+        navigate(
+          `/meeting/${id}/summary?transcript=${encodeURIComponent(transcript)}`,
+        )
+      }
+      className="flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-2 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-indigo-500 cursor-pointer"
+    >
+      <Sparkles className="h-4 w-4" />
+      <span className="hidden sm:inline">AI summary</span>
+    </button>
+
+    <button
+      onClick={leaveMeeting}
+      className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer"
+    >
+      <PhoneOff className="h-4 w-4" />
+      <span className="hidden sm:inline">Leave</span>
+    </button>
+  </div>
+</div>
         {/* Chat Sidebar */}
-        <div className="w-full lg:w-72 flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none overflow-hidden">
+        <div className="... w-full lg:w-80 xl:w-96 flex-1 lg:flex-none  bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none overflow-hidden">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center">
             <h2 className="font-semibold text-sm">Meeting chat</h2>
             <button

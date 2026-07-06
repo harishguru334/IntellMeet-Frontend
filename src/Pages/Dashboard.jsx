@@ -35,19 +35,19 @@ const Dashboard = () => {
     fetchMeetings();
   }, []);
 
- const createMeeting = async () => {
-  if (!title.trim()) return;
-  setLoading(true);
-  try {
-    const { data } = await API.post("/meetings/create", { title });
-    navigate(`/meeting/${data._id}`);
-  } catch (err) {
-    console.log("Create error:", err);
-    toast.error("Failed to create meeting. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+  const createMeeting = async () => {
+    if (!title.trim()) return;
+    setLoading(true);
+    try {
+      const { data } = await API.post("/meetings/create", { title });
+      navigate(`/meeting/${data._id}`);
+    } catch (err) {
+      console.log("Create error:", err);
+      toast.error("Failed to create meeting. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Join a meeting shared by someone else — accepts a meeting code
   // (e.g. "A1B2C3D4") or a full pasted invite link.
@@ -77,7 +77,9 @@ const Dashboard = () => {
     const link = `${window.location.origin}/meeting/${meeting._id}`;
     navigator.clipboard
       .writeText(link)
-      .then(() => toast.success(`Invite link copied! Code: ${meeting.meetingCode}`))
+      .then(() =>
+        toast.success(`Invite link copied! Code: ${meeting.meetingCode}`),
+      )
       .catch(() => toast.error("Couldn't copy link"));
   };
 
@@ -86,40 +88,62 @@ const Dashboard = () => {
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
   const meetingsThisWeek = meetings.filter(
-    (m) => new Date(m.createdAt) >= oneWeekAgo
+    (m) => new Date(m.createdAt) >= oneWeekAgo,
   ).length;
 
   const summariesCount = meetings.filter((m) => m.summary).length;
 
   const totalActionItems = meetings.reduce(
     (sum, m) => sum + (m.actionItems?.length || 0),
-    0
+    0,
   );
 
   const stats = [
-    { icon: Video, value: totalMeetings, label: "Total meetings", color: "text-purple-400" },
-    { icon: Calendar, value: meetingsThisWeek, label: "This week", color: "text-orange-400" },
-    { icon: Sparkles, value: summariesCount, label: "AI summaries", color: "text-pink-400" },
-    { icon: CheckCircle2, value: totalActionItems, label: "Action items", color: "text-emerald-400" },
+    {
+      icon: Video,
+      value: totalMeetings,
+      label: "Total meetings",
+      color: "text-purple-400",
+    },
+    {
+      icon: Calendar,
+      value: meetingsThisWeek,
+      label: "This week",
+      color: "text-orange-400",
+    },
+    {
+      icon: Sparkles,
+      value: summariesCount,
+      label: "AI summaries",
+      color: "text-pink-400",
+    },
+    {
+      icon: CheckCircle2,
+      value: totalActionItems,
+      label: "Action items",
+      color: "text-emerald-400",
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-linear-to-r from-slate-950 via-slate-900 to-slate-800 text-white">
+    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         <div className="mb-6">
           <h1 className="text-white text-2xl font-bold tracking-tight sm:text-3xl">
             Meetings that get things done
           </h1>
           <p className="mt-1 text-sm text-slate-400 sm:text-base">
-            Video calls, Kanban boards, and AI-powered summaries — all in one place.
+            Video calls, Kanban boards, and AI-powered summaries — all in one
+            place.
           </p>
         </div>
 
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Stats */}
+        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="rounded-2xl border border-white/10 bg-white/5 p-4"
+              className="rounded-2xl border border-slate-800 bg-slate-900/70 backdrop-blur-xl p-4 transition hover:bg-slate-800/70"
             >
               <stat.icon className={`h-5 w-5 ${stat.color}`} />
               <p className="mt-2 text-2xl font-semibold text-white">
@@ -130,7 +154,8 @@ const Dashboard = () => {
           ))}
         </div>
 
-        <div className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:bg-white/7 sm:p-6 lg:p-8">
+        {/* Start / Join card */}
+        <div className="mb-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl transition hover:bg-slate-900/80 sm:p-6 lg:p-8">
           <h2 className="text-white mb-4 text-xl font-semibold">
             Start a new meeting
           </h2>
@@ -141,7 +166,8 @@ const Dashboard = () => {
               placeholder="Weekly sync, client call..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 sm:text-base"
+              onKeyDown={(e) => e.key === "Enter" && createMeeting()}
+              className="w-full min-w-0 flex-1 rounded-2xl border border-slate-700 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 sm:text-base"
             />
             <button
               onClick={createMeeting}
@@ -154,9 +180,11 @@ const Dashboard = () => {
           </div>
 
           <div className="my-5 flex items-center gap-3">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-xs uppercase tracking-wide text-slate-500">or</span>
-            <div className="h-px flex-1 bg-white/10" />
+            <div className="h-px flex-1 bg-slate-800" />
+            <span className="text-xs uppercase tracking-wide text-slate-500">
+              or
+            </span>
+            <div className="h-px flex-1 bg-slate-800" />
           </div>
 
           <h2 className="text-white mb-4 text-xl font-semibold">
@@ -169,7 +197,7 @@ const Dashboard = () => {
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && joinMeeting()}
-              className="w-full min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 sm:text-base"
+              className="w-full min-w-0 flex-1 rounded-2xl border border-slate-700 bg-slate-950/60 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 sm:text-base"
             />
             <button
               onClick={joinMeeting}
@@ -182,13 +210,15 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Meetings list header */}
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-white text-xl font-semibold">My Meetings</h2>
-          <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-slate-300">
+          <span className="rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1 text-sm text-slate-300">
             {meetings.length} meeting{meetings.length !== 1 ? "s" : ""}
           </span>
         </div>
 
+        {/* Meetings grid */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {meetings.length === 0 ? (
             <p className="col-span-full py-8 text-center text-slate-400">
@@ -198,10 +228,10 @@ const Dashboard = () => {
             meetings.map((m) => (
               <div
                 key={m._id}
-                className="group rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl shadow-black/10 backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:border-white/20 hover:bg-white/10 sm:p-6"
+                className="group rounded-3xl border border-slate-800 bg-slate-900/70 p-5 shadow-xl shadow-black/10 backdrop-blur-md transition duration-200 hover:-translate-y-1 hover:border-slate-700 hover:bg-slate-900/90 sm:p-6"
               >
                 <div className="mb-4">
-                  <p className="text-base font-semibold text-white transition group-hover:text-blue-300 sm:text-lg">
+                  <p className="truncate text-base font-semibold text-white transition group-hover:text-blue-300 sm:text-lg">
                     {m.title}
                   </p>
                   <p className="mt-1 text-sm text-slate-400">
@@ -234,7 +264,7 @@ const Dashboard = () => {
                   <button
                     onClick={() => shareMeeting(m)}
                     title="Copy invite link"
-                    className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm font-semibold text-white transition duration-200 hover:bg-white/10 cursor-pointer"
+                    className="inline-flex items-center justify-center rounded-2xl border border-slate-700 bg-slate-800/60 px-3.5 py-2.5 text-sm font-semibold text-white transition duration-200 hover:bg-slate-700/70 cursor-pointer"
                   >
                     <Share2 className="h-4 w-4" />
                   </button>
