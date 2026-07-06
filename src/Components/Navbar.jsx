@@ -11,7 +11,7 @@ import {
   Trophy,
   CalendarDays,
   Home,
-  LayoutKanban,
+  Kanban,
   Plus,
 } from "lucide-react";
 
@@ -225,7 +225,7 @@ const Analytics = () => {
             onClick={() => navigate("/kanban")}
             className="flex flex-col items-center bg-slate-900/60 backdrop-blur-xl hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 text-center transition hover:-translate-y-0.5 cursor-pointer"
           >
-            <LayoutKanban className="h-6 w-6 mb-1 text-slate-300" />
+            <Kanban className="h-6 w-6 mb-1 text-slate-300" />
             <div className="text-sm text-slate-300">Kanban Board</div>
           </button>
           <button
