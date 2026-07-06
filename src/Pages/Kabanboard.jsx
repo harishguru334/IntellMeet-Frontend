@@ -15,9 +15,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import API from "../Api/Axios";
+import toast from "react-hot-toast";
+import { ArrowLeft, Plus, Trash2, AlertTriangle } from "lucide-react";
 
-// Single Task Card
-const TaskCard = ({ task, onDelete }) => {
+const TaskCard = ({ task, onDeleteRequest }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task._id });
 
@@ -43,10 +44,11 @@ const TaskCard = ({ task, onDelete }) => {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(task._id);
+            onDeleteRequest(task);
           }}
-          className="text-slate-500 hover:text-red-400 text-xs transition"
+          className="flex items-center gap-1 text-slate-500 hover:text-red-400 text-xs transition cursor-pointer"
         >
+          <Trash2 className="h-3.5 w-3.5" />
           Delete
         </button>
       </div>
@@ -54,7 +56,6 @@ const TaskCard = ({ task, onDelete }) => {
   );
 };
 
-// Task ka static preview jo drag karte waqt mouse ke saath float karta hai
 const TaskCardPreview = ({ task }) => (
   <div className="bg-slate-800 rounded-xl p-4 border border-blue-500/50 shadow-2xl shadow-blue-900/40 rotate-2 cursor-grabbing">
     <p className="text-white text-sm font-medium mb-2">{task.title}</p>
@@ -64,8 +65,7 @@ const TaskCardPreview = ({ task }) => (
   </div>
 );
 
-// Column Component
-const Column = ({ title, color, tasks, onDelete }) => {
+const Column = ({ title, color, tasks, onDeleteRequest }) => {
   const { setNodeRef } = useSortable({ id: title });
 
   return (
@@ -86,7 +86,7 @@ const Column = ({ title, color, tasks, onDelete }) => {
         strategy={verticalListSortingStrategy}
       >
         {tasks.map((task) => (
-          <TaskCard key={task._id} task={task} onDelete={onDelete} />
+          <TaskCard key={task._id} task={task} onDeleteRequest={onDeleteRequest} />
         ))}
       </SortableContext>
 
@@ -99,7 +99,43 @@ const Column = ({ title, color, tasks, onDelete }) => {
   );
 };
 
-// Main Kanban Board
+// Delete Confirmation Modal
+const DeleteConfirmModal = ({ task, onConfirm, onCancel }) => {
+  if (!task) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="bg-red-500/10 p-2 rounded-xl">
+            <AlertTriangle className="h-5 w-5 text-red-400" />
+          </div>
+          <h3 className="text-white font-semibold text-lg">Delete task?</h3>
+        </div>
+        <p className="text-slate-400 text-sm mb-6">
+          Are you sure you want to delete "
+          <span className="text-slate-300 font-medium">{task.title}</span>"? This
+          can't be undone.
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            className="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl py-2.5 text-sm font-semibold transition cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 bg-red-600 hover:bg-red-700 rounded-xl py-2.5 text-sm font-semibold transition cursor-pointer"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const KanbanBoard = () => {
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
@@ -108,17 +144,26 @@ const KanbanBoard = () => {
   const [activeId, setActiveId] = useState(null);
   const [importing, setImporting] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState("");
+  const [taskToDelete, setTaskToDelete] = useState(null);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
   const fetchTasks = async () => {
-    const { data } = await API.get("/tasks");
-    setTasks(data);
+    try {
+      const { data } = await API.get("/tasks");
+      setTasks(data);
+    } catch (err) {
+      toast.error("Failed to load tasks");
+    }
   };
 
   const fetchMeetings = async () => {
-    const { data } = await API.get("/meetings/my");
-    setMeetings(data.filter((m) => m.actionItems?.length > 0));
+    try {
+      const { data } = await API.get("/meetings/my");
+      setMeetings(data.filter((m) => m.actionItems?.length > 0));
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
@@ -144,12 +189,11 @@ const KanbanBoard = () => {
     Done: "done",
   };
 
-  // ✅ Active task nikalo — DragOverlay ke liye
   const activeTask = tasks.find((t) => t._id === activeId);
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    setActiveId(null); // ✅ pehle hi clear kar do, DragOverlay hat jayega turant
+    setActiveId(null);
     if (!over) return;
 
     const activeTaskObj = tasks.find((t) => t._id === active.id);
@@ -169,19 +213,41 @@ const KanbanBoard = () => {
       prev.map((t) => (t._id === active.id ? { ...t, status: newStatus } : t)),
     );
 
-    await API.put(`/tasks/${active.id}/status`, { status: newStatus });
+    try {
+      await API.put(`/tasks/${active.id}/status`, { status: newStatus });
+    } catch (err) {
+      toast.error("Failed to update task status");
+      fetchTasks(); // revert on failure
+    }
   };
 
   const addTask = async () => {
     if (!newTask.trim()) return;
-    const { data } = await API.post("/tasks", { title: newTask });
-    setTasks((prev) => [...prev, data]);
-    setNewTask("");
+    try {
+      const { data } = await API.post("/tasks", { title: newTask });
+      setTasks((prev) => [...prev, data]);
+      setNewTask("");
+      toast.success("Task added");
+    } catch (err) {
+      toast.error("Failed to add task");
+    }
   };
 
-  const deleteTask = async (taskId) => {
-    await API.delete(`/tasks/${taskId}`);
-    setTasks((prev) => prev.filter((t) => t._id !== taskId));
+  // Delete flow: request -> confirm modal -> actual delete
+  const requestDelete = (task) => setTaskToDelete(task);
+  const cancelDelete = () => setTaskToDelete(null);
+
+  const confirmDelete = async () => {
+    if (!taskToDelete) return;
+    try {
+      await API.delete(`/tasks/${taskToDelete._id}`);
+      setTasks((prev) => prev.filter((t) => t._id !== taskToDelete._id));
+      toast.success("Task deleted");
+    } catch (err) {
+      toast.error("Failed to delete task");
+    } finally {
+      setTaskToDelete(null);
+    }
   };
 
   const importFromMeeting = async () => {
@@ -191,8 +257,9 @@ const KanbanBoard = () => {
       const { data } = await API.post(`/tasks/import/${selectedMeeting}`);
       setTasks((prev) => [...prev, ...data]);
       setSelectedMeeting("");
+      toast.success(`${data.length} task${data.length !== 1 ? "s" : ""} imported`);
     } catch (err) {
-      console.error(err);
+      toast.error("Failed to import tasks");
     } finally {
       setImporting(false);
     }
@@ -200,7 +267,6 @@ const KanbanBoard = () => {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white p-6">
-      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Kanban Board</h1>
@@ -210,13 +276,13 @@ const KanbanBoard = () => {
         </div>
         <button
           onClick={() => navigate("/dashboard")}
-          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-xl text-sm transition"
+          className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-xl text-sm transition cursor-pointer"
         >
-          ← Dashboard
+          <ArrowLeft className="h-4 w-4" />
+          Dashboard
         </button>
       </div>
 
-      {/* Add Task + Import */}
       <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl p-5 mb-6 border border-slate-800">
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <input
@@ -229,9 +295,10 @@ const KanbanBoard = () => {
           />
           <button
             onClick={addTask}
-            className="rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 px-5 py-2 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5"
+            className="flex items-center justify-center gap-2 rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 px-5 py-2 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5 cursor-pointer"
           >
-            + Add Task
+            <Plus className="h-4 w-4" />
+            Add Task
           </button>
         </div>
 
@@ -240,7 +307,7 @@ const KanbanBoard = () => {
             <select
               value={selectedMeeting}
               onChange={(e) => setSelectedMeeting(e.target.value)}
-              className="flex-1 bg-slate-800/70 rounded-xl px-4 py-2 text-sm outline-none border border-slate-700"
+              className="flex-1 bg-slate-800/70 rounded-xl px-4 py-2 text-sm outline-none border border-slate-700 cursor-pointer"
             >
               <option value="">Import action items from meeting...</option>
               {meetings.map((m) => (
@@ -252,7 +319,7 @@ const KanbanBoard = () => {
             <button
               onClick={importFromMeeting}
               disabled={!selectedMeeting || importing}
-              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 px-5 py-2 rounded-xl text-sm font-semibold transition"
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed px-5 py-2 rounded-xl text-sm font-semibold transition cursor-pointer"
             >
               {importing ? "Importing..." : "Import"}
             </button>
@@ -260,7 +327,6 @@ const KanbanBoard = () => {
         )}
       </div>
 
-      {/* Kanban Columns */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -274,18 +340,16 @@ const KanbanBoard = () => {
               title={colName}
               color={columnColors[colName]}
               tasks={colTasks}
-              onDelete={deleteTask}
+              onDeleteRequest={requestDelete}
             />
           ))}
         </div>
 
-        {/* ✅ DragOverlay — ab drag karte waqt smooth floating preview dikhega */}
         <DragOverlay>
           {activeTask ? <TaskCardPreview task={activeTask} /> : null}
         </DragOverlay>
       </DndContext>
 
-      {/* Stats */}
       <div className="mt-6 grid grid-cols-3 gap-4">
         <div className="bg-slate-900/60 backdrop-blur-xl rounded-xl p-4 text-center border border-slate-800">
           <p className="text-2xl font-bold text-blue-400">
@@ -306,6 +370,12 @@ const KanbanBoard = () => {
           <p className="text-slate-400 text-sm">Done</p>
         </div>
       </div>
+
+      <DeleteConfirmModal
+        task={taskToDelete}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
     </div>
   );
 };

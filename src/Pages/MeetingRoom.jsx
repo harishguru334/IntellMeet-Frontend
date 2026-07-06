@@ -3,6 +3,23 @@ import { useParams, useNavigate } from "react-router-dom";
 import API from "../Api/Axios";
 import socket from "../Socket";
 import Peer from "peerjs";
+import toast from "react-hot-toast";
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  ScreenShare,
+  ScreenShareOff,
+  Circle,
+  Square,
+  Sparkles,
+  PhoneOff,
+  Send,
+  Plus,
+  X,
+  Captions,
+} from "lucide-react";
 
 const MeetingRoom = () => {
   const [recording, setRecording] = useState(false);
@@ -128,7 +145,7 @@ const MeetingRoom = () => {
         });
       } catch (err) {
         console.error("Init error:", err);
-        alert("Camera/mic access denied!");
+        toast.error("Camera/mic access denied!");
       }
     };
 
@@ -170,7 +187,7 @@ const MeetingRoom = () => {
   };
 
   const createQuickTask = async () => {
-    if (!taskTitle.trim()) return alert("Task title daalo bhai!");
+    if (!taskTitle.trim()) return toast.error("Please enter a task title");
     setTaskLoading(true);
     try {
       await API.post("/tasks", {
@@ -188,12 +205,13 @@ const MeetingRoom = () => {
         },
       ]);
 
+      toast.success("Task created!");
       setTaskTitle("");
       setTaskAssignee("");
       setShowTaskForm(false);
     } catch (err) {
       console.error("Task create error:", err);
-      alert("Task banane mein error aaya");
+      toast.error("Failed to create task");
     } finally {
       setTaskLoading(false);
     }
@@ -236,6 +254,7 @@ const MeetingRoom = () => {
       });
 
       setIsScreenSharing(true);
+      toast.success("Screen sharing started");
 
       screenTrack.onended = () => {
         stopScreenShare();
@@ -270,7 +289,7 @@ const MeetingRoom = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Ye browser live transcription support nahi karta. Chrome use karo.");
+      toast.error("This browser doesn't support live transcription. Try Chrome.");
       return;
     }
 
@@ -299,6 +318,7 @@ const MeetingRoom = () => {
     recognitionRef.current = recognition;
     isTranscribingRef.current = true;
     setIsTranscribing(true);
+    toast.success("Live transcription started");
   };
 
   const stopTranscription = () => {
@@ -311,7 +331,7 @@ const MeetingRoom = () => {
     recordedChunksRef.current = [];
 
     const stream = localVideoRef.current?.srcObject || localStreamRef.current;
-    if (!stream) return alert("Koi stream nahi hai!");
+    if (!stream) return toast.error("No stream available to record");
 
     const mediaRecorder = new MediaRecorder(stream);
     mediaRecorderRef.current = mediaRecorder;
@@ -330,10 +350,12 @@ const MeetingRoom = () => {
       a.download = `meeting-recording-${Date.now()}.webm`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success("Recording downloaded");
     };
 
     mediaRecorder.start();
     setRecording(true);
+    toast.success("Recording started");
   };
 
   const stopRecording = () => {
@@ -351,7 +373,7 @@ const MeetingRoom = () => {
     navigate("/dashboard");
   };
 
- if (!meeting)
+  if (!meeting)
     return (
       <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center text-white">
         <div className="flex items-center gap-3">
@@ -373,8 +395,9 @@ const MeetingRoom = () => {
         </div>
         <button
           onClick={leaveMeeting}
-          className="bg-red-600/90 hover:bg-red-600 px-4 py-2 rounded-xl text-sm font-medium transition"
+          className="flex items-center gap-2 bg-red-600/90 hover:bg-red-600 px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
         >
+          <PhoneOff className="h-4 w-4" />
           Leave
         </button>
       </div>
@@ -394,7 +417,7 @@ const MeetingRoom = () => {
                 className="w-full h-full object-cover"
               />
               <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-medium">
-                You {!camOn && "· Cam Off"} {!micOn && "· Muted"}
+                You {!camOn && "· Cam off"} {!micOn && "· Muted"}
                 {isScreenSharing && " · Sharing"}
               </div>
             </div>
@@ -409,18 +432,19 @@ const MeetingRoom = () => {
           <div className="mx-4 mb-2">
             <button
               onClick={isTranscribing ? stopTranscription : startTranscription}
-              className={`px-3 py-1.5 rounded-lg text-sm mb-2 font-semibold transition ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm mb-2 font-semibold transition cursor-pointer ${
                 isTranscribing
                   ? "bg-red-600/90 hover:bg-red-600"
                   : "bg-emerald-600/90 hover:bg-emerald-600"
               }`}
             >
-              {isTranscribing ? "Stop Live Transcription" : "Start Live Transcription"}
+              <Captions className="h-4 w-4" />
+              {isTranscribing ? "Stop live transcription" : "Start live transcription"}
             </button>
             <textarea
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Meeting transcript yahan aayega (ya manually paste karo AI summary ke liye)..."
+              placeholder="Transcript will appear here (or paste manually for AI summary)..."
               className="w-full bg-slate-900/70 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-500/50 resize-none h-16 transition"
             />
           </div>
@@ -429,56 +453,66 @@ const MeetingRoom = () => {
           <div className="bg-slate-900/70 backdrop-blur-xl border-t border-slate-800 py-4 flex justify-center gap-3 flex-wrap px-4">
             <button
               onClick={toggleMic}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
                 micOn
                   ? "bg-slate-700 hover:bg-slate-600"
                   : "bg-red-600 hover:bg-red-700"
               }`}
             >
+              {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
               {micOn ? "Mute" : "Unmute"}
             </button>
             <button
               onClick={toggleCam}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
                 camOn
                   ? "bg-slate-700 hover:bg-slate-600"
                   : "bg-red-600 hover:bg-red-700"
               }`}
             >
-              {camOn ? "Cam Off" : "Cam On"}
+              {camOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+              {camOn ? "Cam off" : "Cam on"}
             </button>
             <button
               onClick={isScreenSharing ? stopScreenShare : startScreenShare}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
                 isScreenSharing
                   ? "bg-red-600 hover:bg-red-700"
                   : "bg-emerald-600 hover:bg-emerald-700"
               }`}
             >
-              {isScreenSharing ? "Stop Sharing" : "Share Screen"}
+              {isScreenSharing ? (
+                <ScreenShareOff className="h-4 w-4" />
+              ) : (
+                <ScreenShare className="h-4 w-4" />
+              )}
+              {isScreenSharing ? "Stop sharing" : "Share screen"}
             </button>
             <button
               onClick={recording ? stopRecording : startRecording}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
                 recording
                   ? "bg-red-500 hover:bg-red-600 animate-pulse"
                   : "bg-orange-600 hover:bg-orange-700"
               }`}
             >
-              {recording ? "Stop Rec" : "Record"}
+              {recording ? <Square className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+              {recording ? "Stop rec" : "Record"}
             </button>
             <button
               onClick={() =>
                 navigate(`/meeting/${id}/summary?transcript=${encodeURIComponent(transcript)}`)
               }
-              className="rounded-full bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-2 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-indigo-500"
+              className="flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-2 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-indigo-500 cursor-pointer"
             >
-              AI Summary
+              <Sparkles className="h-4 w-4" />
+              AI summary
             </button>
             <button
               onClick={leaveMeeting}
-              className="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-full text-sm font-semibold transition"
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer"
             >
+              <PhoneOff className="h-4 w-4" />
               Leave
             </button>
           </div>
@@ -487,12 +521,13 @@ const MeetingRoom = () => {
         {/* Chat Sidebar */}
         <div className="w-72 bg-slate-900/70 backdrop-blur-xl border-l border-slate-800 flex flex-col">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center">
-            <h2 className="font-semibold text-sm">Meeting Chat</h2>
+            <h2 className="font-semibold text-sm">Meeting chat</h2>
             <button
               onClick={() => setShowTaskForm(!showTaskForm)}
-              className="text-xs bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded-lg font-medium transition"
+              className="flex items-center gap-1 text-xs bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded-lg font-medium transition cursor-pointer"
             >
-              {showTaskForm ? "Close" : "+ Task"}
+              {showTaskForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+              {showTaskForm ? "Close" : "Task"}
             </button>
           </div>
 
@@ -509,15 +544,15 @@ const MeetingRoom = () => {
                 type="text"
                 value={taskAssignee}
                 onChange={(e) => setTaskAssignee(e.target.value)}
-                placeholder="Assign to (naam)..."
+                placeholder="Assign to (name)..."
                 className="w-full bg-slate-800/70 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500/50 transition"
               />
               <button
                 onClick={createQuickTask}
                 disabled={taskLoading}
-                className="w-full bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 transition"
+                className="w-full bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
               >
-                {taskLoading ? "Creating..." : "Create Task"}
+                {taskLoading ? "Creating..." : "Create task"}
               </button>
             </div>
           )}
@@ -559,8 +594,9 @@ const MeetingRoom = () => {
             />
             <button
               onClick={sendMessage}
-              className="bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 px-4 py-2 rounded-xl text-sm font-semibold transition"
+              className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 px-4 py-2 rounded-xl text-sm font-semibold transition cursor-pointer"
             >
+              <Send className="h-4 w-4" />
               Send
             </button>
           </div>
