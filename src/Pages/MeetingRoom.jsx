@@ -657,7 +657,7 @@ const MeetingRoom = () => {
       {/* Header */}
       <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-6 py-2.5 lg:py-3 flex justify-between items-center gap-2">
         <div className="min-w-0">
-          <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 truncate">
+          <h1 className="text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 truncate">
             <span className="truncate">{meeting.title}</span>
             {isHost && (
               <span className="flex items-center gap-1 bg-amber-500/15 text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-500/30 shrink-0">
@@ -730,9 +730,9 @@ const MeetingRoom = () => {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden min-h-0">
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden gap-4 p-4 min-h-0">
         {/* Video Area */}
-        <div className="flex-[2] lg:flex-1 bg-slate-950/40 flex flex-col min-h-0">
+        <div className="flex-1 rounded-3xl lg:flex-1 bg-slate-950/40 flex flex-col min-h-0">
           {/* Videos Grid */}
           <div
             className={`flex-1 p-4 grid gap-4 overflow-y-auto ${
@@ -742,9 +742,9 @@ const MeetingRoom = () => {
                   ? "grid-cols-1 sm:grid-cols-2 content-center"
                   : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 content-start"
             }`}
-          >
+          > 
             {/* Local Video */}
-            <div className="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden aspect-video shadow-lg">
+            <div className="relative bg-slate-900 border border-slate-800 rounded-3xl   overflow-hidden aspect-video shadow-2x1">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -792,17 +792,17 @@ const MeetingRoom = () => {
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
               placeholder="Transcript will appear here (or paste manually for AI summary)..."
-              className="w-full bg-slate-900/70 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-500/50 resize-none h-16 transition"
+              className="w-full bg-slate-900/70 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-500/50 resize-none h-24 lg:h-28 transition"
             />
           </div>
 
           {/* Controls */}
-          <div className="bg-slate-900/70 backdrop-blur-xl border-t border-slate-800 py-4 flex justify-center items-center gap-3 flex-wrap px-4">
+          <div className="bg-slate-900/70 backdrop-blur-xl border-t border-slate-800 py-5 flex justify-center items-center gap-5 flex-wrap px-4">
             {/* Group 1: Basic media controls */}
             <div className="flex gap-3 flex-wrap justify-center">
               <button
                 onClick={toggleMic}
-                className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition cursor-pointer ${
                   micOn
                     ? "bg-slate-700 hover:bg-slate-600"
                     : "bg-red-600 hover:bg-red-700"
@@ -818,7 +818,7 @@ const MeetingRoom = () => {
 
               <button
                 onClick={toggleCam}
-                className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition cursor-pointer ${
                   camOn
                     ? "bg-slate-700 hover:bg-slate-600"
                     : "bg-red-600 hover:bg-red-700"
@@ -834,7 +834,7 @@ const MeetingRoom = () => {
 
               <button
                 onClick={isScreenSharing ? stopScreenShare : startScreenShare}
-                className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition cursor-pointer ${
                   isScreenSharing
                     ? "bg-red-600 hover:bg-red-700"
                     : "bg-emerald-600 hover:bg-emerald-700"
@@ -858,7 +858,7 @@ const MeetingRoom = () => {
             <div className="flex gap-3 flex-wrap justify-center">
               <button
                 onClick={recording ? stopRecording : startRecording}
-                className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer ${
+                className={`flex items-center gap-2 px-6 py-3 rounded-full text-sm font-semibold transition cursor-pointer ${
                   recording
                     ? "bg-red-500 hover:bg-red-600 animate-pulse"
                     : "bg-orange-600 hover:bg-orange-700"
@@ -880,7 +880,7 @@ const MeetingRoom = () => {
                     `/meeting/${id}/summary?transcript=${encodeURIComponent(transcript)}`,
                   )
                 }
-                className="flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-2 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-indigo-500 cursor-pointer"
+                className="flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-indigo-600 px-6 py-3 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-indigo-500 cursor-pointer"
               >
                 <Sparkles className="h-4 w-4" />
                 <span className="hidden sm:inline">AI summary</span>
@@ -888,7 +888,7 @@ const MeetingRoom = () => {
 
               <button
                 onClick={leaveMeeting}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-5 py-2 rounded-full text-sm font-semibold transition cursor-pointer"
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-full text-sm font-semibold transition cursor-pointer"
               >
                 <PhoneOff className="h-4 w-4" />
                 <span className="hidden sm:inline">Leave</span>
@@ -898,7 +898,7 @@ const MeetingRoom = () => {
         </div>
 
         {/* Chat Sidebar */}
-        <div className="w-full lg:w-80 xl:w-96 flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none overflow-hidden">
+        <div className="w-full lg:w-[340px] xl:w-[380px] flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none overflow-hidden">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center">
             <h2 className="font-semibold text-sm">Meeting chat</h2>
             <button
@@ -955,7 +955,7 @@ const MeetingRoom = () => {
                       {msg.userName} · {msg.time}
                     </span>
                     <div
-                      className={`px-3 py-2 rounded-xl max-w-xs text-sm ${
+                      className={`px-3 py-2 rounded-xl max-w-[80%] text-sm ${
                         msg.userName === "You"
                           ? "bg-linear-to-r from-blue-600 to-indigo-600"
                           : "bg-slate-800"
@@ -1006,7 +1006,7 @@ const RemoteVideo = ({ stream, userName, peerId, registerRef }) => {
   }, [peerId, registerRef]);
 
   return (
-    <div className="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden aspect-video shadow-lg">
+    <div className="relative bg-slate-900 border border-slate-800 rounded-3xl  overflow-hidden aspect-video shadow-2x1">
       <video
         ref={videoRef}
         autoPlay
