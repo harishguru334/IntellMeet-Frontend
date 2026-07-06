@@ -49,6 +49,13 @@ const MeetingRoom = () => {
   const screenStreamRef = useRef(null);
   const recognitionRef = useRef(null);
   const isTranscribingRef = useRef(false);
+  const remoteVideoRefs = useRef(new Map()); // peerId -> <video> element
+  const recordingCanvasRef = useRef(null);
+  const recordingAnimationRef = useRef(null);
+  const canvasStreamRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const audioDestinationRef = useRef(null);
+  const connectedAudioSourcesRef = useRef(new Set());
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -155,7 +162,11 @@ const MeetingRoom = () => {
               if (exists) return prev;
               return [
                 ...prev,
-                { peerId: call.peer, userName: remoteUserName, stream: remoteStream },
+                {
+                  peerId: call.peer,
+                  userName: remoteUserName,
+                  stream: remoteStream,
+                },
               ];
             });
           });
@@ -183,7 +194,11 @@ const MeetingRoom = () => {
                 if (exists) return prev;
                 return [
                   ...prev,
-                  { peerId: remotePeerId, userName: remoteUser, stream: remoteStream },
+                  {
+                    peerId: remotePeerId,
+                    userName: remoteUser,
+                    stream: remoteStream,
+                  },
                 ];
               });
             });
@@ -192,7 +207,9 @@ const MeetingRoom = () => {
 
         // Jab koi participant meeting chhod de — uska video tile hata do
         socket.on("user-left", ({ peerId: leftPeerId, userName: leftUser }) => {
-          setRemoteStreams((prev) => prev.filter((s) => s.peerId !== leftPeerId));
+          setRemoteStreams((prev) =>
+            prev.filter((s) => s.peerId !== leftPeerId),
+          );
           setMessages((prev) => [
             ...prev,
             {
@@ -223,11 +240,18 @@ const MeetingRoom = () => {
       isActive = false;
 
       isTranscribingRef.current = false;
+     isTranscribingRef.current = false;
       recognitionRef.current?.stop();
 
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       peerRef.current?.destroy();
+
+      if (recordingAnimationRef.current) {
+        cancelAnimationFrame(recordingAnimationRef.current);
+      }
+      canvasStreamRef.current?.getTracks().forEach((t) => t.stop());
+      audioContextRef.current?.close();
 
       socket.off("user-peer-id");
       socket.off("user-left");
@@ -240,6 +264,22 @@ const MeetingRoom = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  
+  useEffect(() => {
+    if (!recording || !audioContextRef.current || !audioDestinationRef.current) return;
+    remoteStreams.forEach((remote) => {
+      if (!connectedAudioSourcesRef.current.has(remote.peerId)) {
+        try {
+          const src = audioContextRef.current.createMediaStreamSource(remote.stream);
+          src.connect(audioDestinationRef.current);
+          connectedAudioSourcesRef.current.add(remote.peerId);
+        } catch (err) {
+          console.error("Audio mix error:", err);
+        }
+      }
+    });
+  }, [remoteStreams, recording]);
 
   const sendMessage = () => {
     if (!input.trim()) return;
@@ -359,7 +399,9 @@ const MeetingRoom = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      toast.error("This browser doesn't support live transcription. Try Chrome.");
+      toast.error(
+        "This browser doesn't support live transcription. Try Chrome.",
+      );
       return;
     }
 
@@ -398,47 +440,148 @@ const MeetingRoom = () => {
   };
 
   const startRecording = () => {
-    recordedChunksRef.current = [];
+    try {
+      recordedChunksRef.current = [];
 
-    const stream = localVideoRef.current?.srcObject || localStreamRef.current;
-    if (!stream) return toast.error("No stream available to record");
+      // Canvas banate hain jispe local + sabke remote video ek grid mein draw honge
+      const canvas = document.createElement("canvas");
+      canvas.width = 1280;
+      canvas.height = 720;
+      const ctx = canvas.getContext("2d");
+      recordingCanvasRef.current = canvas;
 
-    const mediaRecorder = new MediaRecorder(stream);
-    mediaRecorderRef.current = mediaRecorder;
+      // Sabka audio (apna + sab remote participants ka) ek stream mein mix karte hain
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const destination = audioContext.createMediaStreamDestination();
+      audioContextRef.current = audioContext;
+      audioDestinationRef.current = destination;
+      connectedAudioSourcesRef.current = new Set();
 
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) {
-        recordedChunksRef.current.push(e.data);
+      if (localStreamRef.current) {
+        const localSource = audioContext.createMediaStreamSource(localStreamRef.current);
+        localSource.connect(destination);
+        connectedAudioSourcesRef.current.add("local");
       }
-    };
 
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `meeting-recording-${Date.now()}.webm`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("Recording downloaded");
-    };
+      remoteStreams.forEach((remote) => {
+        try {
+          const src = audioContext.createMediaStreamSource(remote.stream);
+          src.connect(destination);
+          connectedAudioSourcesRef.current.add(remote.peerId);
+        } catch (err) {
+          console.error("Audio mix error:", err);
+        }
+      });
 
-    mediaRecorder.start();
-    setRecording(true);
-    toast.success("Recording started");
+      // Har frame par local + sabke remote video ko grid layout mein canvas pe draw karo
+      const drawFrame = () => {
+        const tiles = [
+          { el: localVideoRef.current, label: "You" },
+          ...Array.from(remoteVideoRefs.current.entries()).map(([peerId, el]) => ({
+            el,
+            label:
+              remoteStreams.find((r) => r.peerId === peerId)?.userName || "Participant",
+          })),
+        ].filter((t) => t.el && t.el.videoWidth > 0);
+
+        const cols = Math.ceil(Math.sqrt(tiles.length)) || 1;
+        const rows = Math.ceil(tiles.length / cols) || 1;
+        const cellW = canvas.width / cols;
+        const cellH = canvas.height / rows;
+
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        tiles.forEach((tile, i) => {
+          const x = (i % cols) * cellW;
+          const y = Math.floor(i / cols) * cellH;
+          try {
+            ctx.drawImage(tile.el, x, y, cellW, cellH);
+          } catch (err) {
+            // frame abhi ready nahi hua, skip kar do
+          }
+          ctx.font = "14px sans-serif";
+          const labelWidth = ctx.measureText(tile.label).width + 16;
+          ctx.fillStyle = "rgba(0,0,0,0.6)";
+          ctx.fillRect(x + 8, y + cellH - 30, labelWidth, 22);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(tile.label, x + 16, y + cellH - 14);
+        });
+
+        recordingAnimationRef.current = requestAnimationFrame(drawFrame);
+      };
+      drawFrame();
+
+      const canvasStream = canvas.captureStream(30);
+      canvasStreamRef.current = canvasStream;
+
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...destination.stream.getAudioTracks(),
+      ]);
+
+      const mediaRecorder = new MediaRecorder(combinedStream, {
+        mimeType: "video/webm;codecs=vp9,opus",
+      });
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          recordedChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `meeting-recording-${Date.now()}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Recording downloaded");
+      };
+
+      mediaRecorder.start();
+      setRecording(true);
+      toast.success("Recording started — poori meeting record ho rahi hai");
+    } catch (err) {
+      console.error("Recording start error:", err);
+      toast.error("Recording start nahi ho payi");
+    }
   };
 
   const stopRecording = () => {
     mediaRecorderRef.current?.stop();
+
+    if (recordingAnimationRef.current) {
+      cancelAnimationFrame(recordingAnimationRef.current);
+      recordingAnimationRef.current = null;
+    }
+    canvasStreamRef.current?.getTracks().forEach((t) => t.stop());
+    canvasStreamRef.current = null;
+    audioContextRef.current?.close();
+    audioContextRef.current = null;
+    audioDestinationRef.current = null;
+    connectedAudioSourcesRef.current = new Set();
+
     setRecording(false);
   };
 
-  const leaveMeeting = () => {
+ const leaveMeeting = () => {
     isTranscribingRef.current = false;
     recognitionRef.current?.stop();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     screenStreamRef.current?.getTracks().forEach((t) => t.stop());
     peerRef.current?.destroy();
+
+    if (recording) {
+      mediaRecorderRef.current?.stop();
+      if (recordingAnimationRef.current) cancelAnimationFrame(recordingAnimationRef.current);
+      canvasStreamRef.current?.getTracks().forEach((t) => t.stop());
+      audioContextRef.current?.close();
+    }
+
     socket.disconnect();
     navigate("/dashboard");
   };
@@ -448,7 +591,7 @@ const MeetingRoom = () => {
     navigator.clipboard
       .writeText(link)
       .then(() =>
-        toast.success(`Invite link copied! Code: ${meeting?.meetingCode}`)
+        toast.success(`Invite link copied! Code: ${meeting?.meetingCode}`),
       )
       .catch(() => toast.error("Couldn't copy link"));
   };
@@ -478,7 +621,10 @@ const MeetingRoom = () => {
             )}
           </h1>
           <p className="text-slate-400 text-xs mt-0.5">
-            Code: <span className="text-slate-300 font-mono">{meeting.meetingCode}</span>
+            Code:{" "}
+            <span className="text-slate-300 font-mono">
+              {meeting.meetingCode}
+            </span>
           </p>
         </div>
         <div className="flex items-center gap-2 relative">
@@ -495,25 +641,29 @@ const MeetingRoom = () => {
                 Participants ({participants.length || 1})
               </div>
               <div className="max-h-72 overflow-y-auto py-2">
-                {(participants.length ? participants : [{ userName, userId }]).map(
-                  (p, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between px-4 py-2 text-sm hover:bg-slate-800/60"
-                    >
-                      <span>
-                        {p.userName}
-                        {p.userId && String(p.userId) === String(userId) && " (You)"}
-                      </span>
-                      {meeting.host && String(p.userId) === String(meeting.host) && (
+                {(participants.length
+                  ? participants
+                  : [{ userName, userId }]
+                ).map((p, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-4 py-2 text-sm hover:bg-slate-800/60"
+                  >
+                    <span>
+                      {p.userName}
+                      {p.userId &&
+                        String(p.userId) === String(userId) &&
+                        " (You)"}
+                    </span>
+                    {meeting.host &&
+                      String(p.userId) === String(meeting.host) && (
                         <span className="flex items-center gap-1 text-amber-400 text-xs">
                           <Crown className="h-3 w-3" />
                           Host
                         </span>
                       )}
-                    </div>
-                  ),
-                )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -554,12 +704,17 @@ const MeetingRoom = () => {
               </div>
             </div>
 
-            {/* Remote Videos */}
+           {/* Remote Videos */}
             {remoteStreams.map((remote) => (
               <RemoteVideo
                 key={remote.peerId}
+                peerId={remote.peerId}
                 stream={remote.stream}
                 userName={remote.userName}
+                registerRef={(peerId, el) => {
+                  if (el) remoteVideoRefs.current.set(peerId, el);
+                  else remoteVideoRefs.current.delete(peerId);
+                }}
               />
             ))}
           </div>
@@ -575,7 +730,9 @@ const MeetingRoom = () => {
               }`}
             >
               <Captions className="h-4 w-4" />
-              {isTranscribing ? "Stop live transcription" : "Start live transcription"}
+              {isTranscribing
+                ? "Stop live transcription"
+                : "Start live transcription"}
             </button>
             <textarea
               value={transcript}
@@ -595,7 +752,11 @@ const MeetingRoom = () => {
                   : "bg-red-600 hover:bg-red-700"
               }`}
             >
-              {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+              {micOn ? (
+                <Mic className="h-4 w-4" />
+              ) : (
+                <MicOff className="h-4 w-4" />
+              )}
               {micOn ? "Mute" : "Unmute"}
             </button>
             <button
@@ -606,7 +767,11 @@ const MeetingRoom = () => {
                   : "bg-red-600 hover:bg-red-700"
               }`}
             >
-              {camOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
+              {camOn ? (
+                <Video className="h-4 w-4" />
+              ) : (
+                <VideoOff className="h-4 w-4" />
+              )}
               {camOn ? "Cam off" : "Cam on"}
             </button>
             <button
@@ -632,12 +797,18 @@ const MeetingRoom = () => {
                   : "bg-orange-600 hover:bg-orange-700"
               }`}
             >
-              {recording ? <Square className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+              {recording ? (
+                <Square className="h-4 w-4" />
+              ) : (
+                <Circle className="h-4 w-4" />
+              )}
               {recording ? "Stop rec" : "Record"}
             </button>
             <button
               onClick={() =>
-                navigate(`/meeting/${id}/summary?transcript=${encodeURIComponent(transcript)}`)
+                navigate(
+                  `/meeting/${id}/summary?transcript=${encodeURIComponent(transcript)}`,
+                )
               }
               className="flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-2 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-indigo-500 cursor-pointer"
             >
@@ -662,7 +833,11 @@ const MeetingRoom = () => {
               onClick={() => setShowTaskForm(!showTaskForm)}
               className="flex items-center gap-1 text-xs bg-purple-600 hover:bg-purple-700 px-2.5 py-1 rounded-lg font-medium transition cursor-pointer"
             >
-              {showTaskForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+              {showTaskForm ? (
+                <X className="h-3.5 w-3.5" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" />
+              )}
               {showTaskForm ? "Close" : "Task"}
             </button>
           </div>
@@ -697,9 +872,13 @@ const MeetingRoom = () => {
             {messages.map((msg, i) => (
               <div key={i}>
                 {msg.type === "system" ? (
-                  <p className="text-center text-slate-500 text-xs py-1">{msg.message}</p>
+                  <p className="text-center text-slate-500 text-xs py-1">
+                    {msg.message}
+                  </p>
                 ) : (
-                  <div className={`flex flex-col ${msg.userName === "You" ? "items-end" : "items-start"}`}>
+                  <div
+                    className={`flex flex-col ${msg.userName === "You" ? "items-end" : "items-start"}`}
+                  >
                     <span className="text-xs text-slate-500 mb-1">
                       {msg.userName} · {msg.time}
                     </span>
@@ -743,11 +922,17 @@ const MeetingRoom = () => {
 };
 
 // Remote Video Component
-const RemoteVideo = ({ stream, userName }) => {
+const RemoteVideo = ({ stream, userName, peerId, registerRef }) => {
   const videoRef = useRef(null);
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = stream;
   }, [stream]);
+
+  
+  useEffect(() => {
+    registerRef?.(peerId, videoRef.current);
+    return () => registerRef?.(peerId, null);
+  }, [peerId, registerRef]);
 
   return (
     <div className="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden aspect-video shadow-lg">
