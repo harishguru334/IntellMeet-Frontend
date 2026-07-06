@@ -606,7 +606,7 @@ const MeetingRoom = () => {
       {/* Header */}
       <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-4 py-2.5 flex justify-between items-center gap-2 shrink-0 sticky top-0 z-30">
         <div className="min-w-0">
-          <h1 className="text-base font-bold text-white flex items-center gap-2 truncate leading-tight">
+          <h1 className="text-base font-bold  text-[24px] m-0 text-white flex items-center gap-2 truncate leading-tight">
             <span className="truncate">{meeting.title}</span>
             {isHost && (
               <span className="flex items-center gap-1 bg-amber-500/15 text-amber-400 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-amber-500/30 shrink-0">
