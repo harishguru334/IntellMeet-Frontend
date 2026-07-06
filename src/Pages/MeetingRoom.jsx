@@ -843,7 +843,7 @@ const MeetingRoom = () => {
         </div>
 
         {/* Chat Sidebar */}
-        <div className="w-full lg:w-72 flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none">
+      <div className="w-full lg:w-72 flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none overflow-hidden">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center">
             <h2 className="font-semibold text-sm">Meeting chat</h2>
             <button
@@ -885,7 +885,7 @@ const MeetingRoom = () => {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+         <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
             {messages.map((msg, i) => (
               <div key={i}>
                 {msg.type === "system" ? (
