@@ -9,12 +9,16 @@ import {
   Play,
   FileText,
   CheckCircle2,
+  LogIn,
+  Share2,
 } from "lucide-react";
 
 const Dashboard = () => {
   const [meetings, setMeetings] = useState([]);
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [joinLoading, setJoinLoading] = useState(false);
   const navigate = useNavigate();
 
   const fetchMeetings = async () => {
@@ -44,6 +48,38 @@ const Dashboard = () => {
     setLoading(false);
   }
 };
+
+  // Join a meeting shared by someone else — accepts a meeting code
+  // (e.g. "A1B2C3D4") or a full pasted invite link.
+  const joinMeeting = async () => {
+    if (!joinCode.trim()) return;
+    setJoinLoading(true);
+    try {
+      let code = joinCode.trim();
+      const linkMatch = code.match(/\/meeting\/([a-zA-Z0-9]+)/);
+      if (linkMatch) {
+        // Full link pasted (e.g. https://app.com/meeting/<id>) — go straight there.
+        navigate(`/meeting/${linkMatch[1]}`);
+        return;
+      }
+
+      const { data } = await API.get(`/meetings/code/${code}`);
+      navigate(`/meeting/${data._id}`);
+    } catch (err) {
+      console.log("Join error:", err);
+      toast.error("Invalid meeting code. Please check and try again.");
+    } finally {
+      setJoinLoading(false);
+    }
+  };
+
+  const shareMeeting = (meeting) => {
+    const link = `${window.location.origin}/meeting/${meeting._id}`;
+    navigator.clipboard
+      .writeText(link)
+      .then(() => toast.success(`Invite link copied! Code: ${meeting.meetingCode}`))
+      .catch(() => toast.error("Couldn't copy link"));
+  };
 
   const totalMeetings = meetings.length;
 
@@ -116,6 +152,34 @@ const Dashboard = () => {
               {loading ? "Creating..." : "Start"}
             </button>
           </div>
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-xs uppercase tracking-wide text-slate-500">or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <h2 className="text-white mb-4 text-xl font-semibold">
+            Join a meeting
+          </h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <input
+              type="text"
+              placeholder="Enter meeting code or paste invite link"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && joinMeeting()}
+              className="w-full min-w-0 flex-1 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-sm text-white placeholder:text-slate-400 outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 sm:text-base"
+            />
+            <button
+              onClick={joinMeeting}
+              disabled={joinLoading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-emerald-600 to-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 transition duration-200 hover:-translate-y-0.5 hover:from-emerald-500 hover:to-teal-500 hover:shadow-xl hover:shadow-emerald-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer sm:w-auto"
+            >
+              <LogIn className="h-4 w-4" />
+              {joinLoading ? "Joining..." : "Join"}
+            </button>
+          </div>
         </div>
 
         <div className="mb-4 flex items-center justify-between gap-3">
@@ -160,12 +224,21 @@ const Dashboard = () => {
                   )}
                 </div>
 
-                <button
-                  onClick={() => navigate(`/meeting/${m._id}`)}
-                  className="inline-flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-500 hover:shadow-xl hover:shadow-emerald-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 cursor-pointer"
-                >
-                  Open
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate(`/meeting/${m._id}`)}
+                    className="inline-flex flex-1 items-center justify-center rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-500 hover:shadow-xl hover:shadow-emerald-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 cursor-pointer"
+                  >
+                    Open
+                  </button>
+                  <button
+                    onClick={() => shareMeeting(m)}
+                    title="Copy invite link"
+                    className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-3.5 py-2.5 text-sm font-semibold text-white transition duration-200 hover:bg-white/10 cursor-pointer"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </button>
+                </div>
                 {m.summary && (
                   <button
                     onClick={() => navigate(`/meeting/${m._id}/detail`)}

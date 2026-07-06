@@ -19,6 +19,7 @@ import {
   Plus,
   X,
   Captions,
+  Share2,
 } from "lucide-react";
 
 const MeetingRoom = () => {
@@ -373,6 +374,16 @@ const MeetingRoom = () => {
     navigate("/dashboard");
   };
 
+  const shareInvite = () => {
+    const link = `${window.location.origin}/meeting/${id}`;
+    navigator.clipboard
+      .writeText(link)
+      .then(() =>
+        toast.success(`Invite link copied! Code: ${meeting?.meetingCode}`)
+      )
+      .catch(() => toast.error("Couldn't copy link"));
+  };
+
   if (!meeting)
     return (
       <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center text-white">
@@ -393,13 +404,22 @@ const MeetingRoom = () => {
             Code: <span className="text-slate-300 font-mono">{meeting.meetingCode}</span>
           </p>
         </div>
-        <button
-          onClick={leaveMeeting}
-          className="flex items-center gap-2 bg-red-600/90 hover:bg-red-600 px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
-        >
-          <PhoneOff className="h-4 w-4" />
-          Leave
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={shareInvite}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+          >
+            <Share2 className="h-4 w-4" />
+            Share
+          </button>
+          <button
+            onClick={leaveMeeting}
+            className="flex items-center gap-2 bg-red-600/90 hover:bg-red-600 px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+          >
+            <PhoneOff className="h-4 w-4" />
+            Leave
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
