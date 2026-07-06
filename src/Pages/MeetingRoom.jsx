@@ -157,15 +157,23 @@ const MeetingRoom = () => {
         });
 
         peer.on("disconnected", () => {
-          console.warn("⚠️ Peer disconnected from signaling server, trying to reconnect...");
+          console.warn(
+            "⚠️ Peer disconnected from signaling server, trying to reconnect...",
+          );
           peer.reconnect();
         });
 
         peer.on("call", (call) => {
           call.answer(localStreamRef.current);
-          call.peerConnection?.addEventListener("iceconnectionstatechange", () => {
-            console.log("ICE state (incoming call):", call.peerConnection.iceConnectionState);
-          });
+          call.peerConnection?.addEventListener(
+            "iceconnectionstatechange",
+            () => {
+              console.log(
+                "ICE state (incoming call):",
+                call.peerConnection.iceConnectionState,
+              );
+            },
+          );
           activeCallRef.current.push(call);
           const remoteUserName = call.metadata?.userName || "Participant";
           call.on("stream", (remoteStream) => {
@@ -196,12 +204,18 @@ const MeetingRoom = () => {
               },
             ]);
 
-           const call = peer.call(remotePeerId, localStreamRef.current, {
+            const call = peer.call(remotePeerId, localStreamRef.current, {
               metadata: { userName },
             });
-            call.peerConnection?.addEventListener("iceconnectionstatechange", () => {
-              console.log("ICE state (outgoing call):", call.peerConnection.iceConnectionState);
-            });
+            call.peerConnection?.addEventListener(
+              "iceconnectionstatechange",
+              () => {
+                console.log(
+                  "ICE state (outgoing call):",
+                  call.peerConnection.iceConnectionState,
+                );
+              },
+            );
             activeCallRef.current.push(call);
             call.on("stream", (remoteStream) => {
               setRemoteStreams((prev) => {
@@ -255,7 +269,7 @@ const MeetingRoom = () => {
       isActive = false;
 
       isTranscribingRef.current = false;
-     isTranscribingRef.current = false;
+      isTranscribingRef.current = false;
       recognitionRef.current?.stop();
 
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -280,13 +294,15 @@ const MeetingRoom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  
   useEffect(() => {
-    if (!recording || !audioContextRef.current || !audioDestinationRef.current) return;
+    if (!recording || !audioContextRef.current || !audioDestinationRef.current)
+      return;
     remoteStreams.forEach((remote) => {
       if (!connectedAudioSourcesRef.current.has(remote.peerId)) {
         try {
-          const src = audioContextRef.current.createMediaStreamSource(remote.stream);
+          const src = audioContextRef.current.createMediaStreamSource(
+            remote.stream,
+          );
           src.connect(audioDestinationRef.current);
           connectedAudioSourcesRef.current.add(remote.peerId);
         } catch (err) {
@@ -435,12 +451,22 @@ const MeetingRoom = () => {
       if (finalText) setTranscript((prev) => prev + finalText);
     };
 
-    recognition.onerror = (e) => console.error("Speech error:", e);
+   recognition.onerror = (e) => {
+  if (e.error === "no-speech") {
+    // Silence hai, koi problem nahi — chup chap ignore karo
+    return;
+  }
+  console.error("Speech error:", e.error);
+};
 
-    recognition.onend = () => {
+recognition.onend = () => {
+  if (isTranscribingRef.current) {
+    // Thoda delay de do restart se pehle, taaki tight loop na bane
+    setTimeout(() => {
       if (isTranscribingRef.current) recognition.start();
-    };
-
+    }, 300);
+  }
+};
     recognition.start();
     recognitionRef.current = recognition;
     isTranscribingRef.current = true;
@@ -466,14 +492,18 @@ const MeetingRoom = () => {
       recordingCanvasRef.current = canvas;
 
       // Sabka audio (apna + sab remote participants ka) ek stream mein mix karte hain
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const audioContext = new (
+        window.AudioContext || window.webkitAudioContext
+      )();
       const destination = audioContext.createMediaStreamDestination();
       audioContextRef.current = audioContext;
       audioDestinationRef.current = destination;
       connectedAudioSourcesRef.current = new Set();
 
       if (localStreamRef.current) {
-        const localSource = audioContext.createMediaStreamSource(localStreamRef.current);
+        const localSource = audioContext.createMediaStreamSource(
+          localStreamRef.current,
+        );
         localSource.connect(destination);
         connectedAudioSourcesRef.current.add("local");
       }
@@ -492,11 +522,14 @@ const MeetingRoom = () => {
       const drawFrame = () => {
         const tiles = [
           { el: localVideoRef.current, label: "You" },
-          ...Array.from(remoteVideoRefs.current.entries()).map(([peerId, el]) => ({
-            el,
-            label:
-              remoteStreams.find((r) => r.peerId === peerId)?.userName || "Participant",
-          })),
+          ...Array.from(remoteVideoRefs.current.entries()).map(
+            ([peerId, el]) => ({
+              el,
+              label:
+                remoteStreams.find((r) => r.peerId === peerId)?.userName ||
+                "Participant",
+            }),
+          ),
         ].filter((t) => t.el && t.el.videoWidth > 0);
 
         const cols = Math.ceil(Math.sqrt(tiles.length)) || 1;
@@ -547,7 +580,9 @@ const MeetingRoom = () => {
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "video/webm",
+        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -583,7 +618,7 @@ const MeetingRoom = () => {
     setRecording(false);
   };
 
- const leaveMeeting = () => {
+  const leaveMeeting = () => {
     isTranscribingRef.current = false;
     recognitionRef.current?.stop();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -592,7 +627,8 @@ const MeetingRoom = () => {
 
     if (recording) {
       mediaRecorderRef.current?.stop();
-      if (recordingAnimationRef.current) cancelAnimationFrame(recordingAnimationRef.current);
+      if (recordingAnimationRef.current)
+        cancelAnimationFrame(recordingAnimationRef.current);
       canvasStreamRef.current?.getTracks().forEach((t) => t.stop());
       audioContextRef.current?.close();
     }
@@ -622,8 +658,7 @@ const MeetingRoom = () => {
     );
 
   return (
-
-   <div className="h-screen w-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white flex flex-col overflow-hidden">
+    <div className="h-screen w-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white flex flex-col overflow-hidden">
       {/* Header */}
       {/* Header */}
       <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-6 py-3 flex justify-between items-center gap-2">
@@ -701,9 +736,9 @@ const MeetingRoom = () => {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden min-h-0">
         {/* Video Area */}
-        <div className="flex:[2] lg:flex-1 bg-slate-950/40 flex flex-col min-h-0">
+        <div className="flex-[2] lg:flex-1 bg-slate-950/40 flex flex-col min-h-0">
           {/* Videos Grid */}
           <div className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start overflow-y-auto">
             {/* Local Video */}
@@ -721,7 +756,7 @@ const MeetingRoom = () => {
               </div>
             </div>
 
-           {/* Remote Videos */}
+            {/* Remote Videos */}
             {remoteStreams.map((remote) => (
               <RemoteVideo
                 key={remote.peerId}
@@ -843,7 +878,7 @@ const MeetingRoom = () => {
         </div>
 
         {/* Chat Sidebar */}
-      <div className="w-full lg:w-72 flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none overflow-hidden">
+        <div className="w-full lg:w-72 flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none overflow-hidden">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center">
             <h2 className="font-semibold text-sm">Meeting chat</h2>
             <button
@@ -885,7 +920,7 @@ const MeetingRoom = () => {
             </div>
           )}
 
-         <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
             {messages.map((msg, i) => (
               <div key={i}>
                 {msg.type === "system" ? (
@@ -945,7 +980,6 @@ const RemoteVideo = ({ stream, userName, peerId, registerRef }) => {
     if (videoRef.current) videoRef.current.srcObject = stream;
   }, [stream]);
 
-  
   useEffect(() => {
     registerRef?.(peerId, videoRef.current);
     return () => registerRef?.(peerId, null);
@@ -953,7 +987,12 @@ const RemoteVideo = ({ stream, userName, peerId, registerRef }) => {
 
   return (
     <div className="relative bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden aspect-video shadow-lg">
-      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className="w-full h-full object-cover"
+      />
       <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-medium">
         {userName || "Participant"}
       </div>
