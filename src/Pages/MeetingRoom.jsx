@@ -151,9 +151,21 @@ const MeetingRoom = () => {
           socket.emit("join-meeting", { meetingId: id, userName, userId });
           socket.emit("broadcast-peer-id", { meetingId: id, peerId, userName });
         });
+        peer.on("error", (err) => {
+          console.error("❌ PeerJS error:", err.type, err);
+          toast.error(`Peer error: ${err.type}`);
+        });
+
+        peer.on("disconnected", () => {
+          console.warn("⚠️ Peer disconnected from signaling server, trying to reconnect...");
+          peer.reconnect();
+        });
 
         peer.on("call", (call) => {
           call.answer(localStreamRef.current);
+          call.peerConnection?.addEventListener("iceconnectionstatechange", () => {
+            console.log("ICE state (incoming call):", call.peerConnection.iceConnectionState);
+          });
           activeCallRef.current.push(call);
           const remoteUserName = call.metadata?.userName || "Participant";
           call.on("stream", (remoteStream) => {
@@ -184,8 +196,11 @@ const MeetingRoom = () => {
               },
             ]);
 
-            const call = peer.call(remotePeerId, localStreamRef.current, {
+           const call = peer.call(remotePeerId, localStreamRef.current, {
               metadata: { userName },
+            });
+            call.peerConnection?.addEventListener("iceconnectionstatechange", () => {
+              console.log("ICE state (outgoing call):", call.peerConnection.iceConnectionState);
             });
             activeCallRef.current.push(call);
             call.on("stream", (remoteStream) => {
@@ -607,36 +622,38 @@ const MeetingRoom = () => {
     );
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white flex flex-col">
+
+   <div className="h-screen w-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-6 py-3 flex justify-between items-center">
-        <div>
-          <h1 className="text-lg font-bold text-white flex items-center gap-2">
-            {meeting.title}
+      {/* Header */}
+      <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-6 py-3 flex justify-between items-center gap-2">
+        <div className="min-w-0">
+          <h1 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 truncate">
+            <span className="truncate">{meeting.title}</span>
             {isHost && (
-              <span className="flex items-center gap-1 bg-amber-500/15 text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-500/30">
+              <span className="flex items-center gap-1 bg-amber-500/15 text-amber-400 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-500/30 shrink-0">
                 <Crown className="h-3 w-3" />
                 Host
               </span>
             )}
           </h1>
-          <p className="text-slate-400 text-xs mt-0.5">
+          <p className="text-slate-400 text-xs mt-0.5 truncate">
             Code:{" "}
             <span className="text-slate-300 font-mono">
               {meeting.meetingCode}
             </span>
           </p>
         </div>
-        <div className="flex items-center gap-2 relative">
+        <div className="flex items-center gap-1.5 sm:gap-2 relative shrink-0">
           <button
             onClick={() => setShowParticipants((prev) => !prev)}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 sm:px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
           >
             <Users className="h-4 w-4" />
             {participants.length || 1}
           </button>
           {showParticipants && (
-            <div className="absolute top-12 right-28 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-20 overflow-hidden">
+            <div className="absolute top-12 right-0 w-56 max-w-[75vw] bg-slate-900 border border-slate-800 rounded-xl shadow-xl z-20 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-800 font-semibold text-sm">
                 Participants ({participants.length || 1})
               </div>
@@ -669,17 +686,17 @@ const MeetingRoom = () => {
           )}
           <button
             onClick={shareInvite}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 sm:px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
           >
             <Share2 className="h-4 w-4" />
-            Share
+            <span className="hidden sm:inline">Share</span>
           </button>
           <button
             onClick={leaveMeeting}
-            className="flex items-center gap-2 bg-red-600/90 hover:bg-red-600 px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-red-600/90 hover:bg-red-600 px-2.5 sm:px-4 py-2 rounded-xl text-sm font-medium transition cursor-pointer"
           >
             <PhoneOff className="h-4 w-4" />
-            Leave
+            <span className="hidden sm:inline">Leave</span>
           </button>
         </div>
       </div>
@@ -826,7 +843,7 @@ const MeetingRoom = () => {
         </div>
 
         {/* Chat Sidebar */}
-        <div className="w-full lg:w-72 flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-[280px] lg:min-h-0">
+        <div className="w-full lg:w-72 flex-1 lg:flex-none bg-slate-900/70 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col min-h-0 max-h-[45vh] lg:max-h-none">
           <div className="p-4 border-b border-slate-800 flex justify-between items-center">
             <h2 className="font-semibold text-sm">Meeting chat</h2>
             <button
