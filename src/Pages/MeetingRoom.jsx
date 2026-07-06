@@ -38,6 +38,7 @@ const MeetingRoom = () => {
   const [recording, setRecording] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskAssignee, setTaskAssignee] = useState("");
@@ -468,6 +469,7 @@ const MeetingRoom = () => {
     recognitionRef.current = recognition;
     isTranscribingRef.current = true;
     setIsTranscribing(true);
+    setShowTranscript(true);
     toast.success("Live transcription started");
   };
 
@@ -655,7 +657,7 @@ const MeetingRoom = () => {
   return (
     <div className="h-screen w-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-800 text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-6 py-2.5 lg:py-3 flex justify-between items-center gap-2">
+      <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-3 sm:px-6 py-2.5 lg:py-3 flex justify-between items-center gap-2 shrink-0">
         <div className="min-w-0">
           <h1 className="text-2xl lg:text-3xl font-bold text-white flex items-center gap-2 truncate">
             <span className="truncate">{meeting.title}</span>
@@ -735,16 +737,16 @@ const MeetingRoom = () => {
         <div className="flex-1 rounded-3xl lg:flex-1 bg-slate-950/40 flex flex-col min-h-0">
           {/* Videos Grid */}
           <div
-            className={`flex-1 p-4 grid gap-4 overflow-y-auto ${
+            className={`flex-1 min-h-[45vh] sm:min-h-[300px] p-4 grid gap-4 overflow-y-auto ${
               remoteStreams.length === 0
                 ? "grid-cols-1 place-content-center"
                 : remoteStreams.length === 1
                   ? "grid-cols-1 sm:grid-cols-2 content-center"
                   : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 content-start"
             }`}
-          > 
+          >
             {/* Local Video */}
-            <div className="relative bg-slate-900 border border-slate-800 rounded-3xl   overflow-hidden aspect-video shadow-2x1">
+            <div className="relative bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden aspect-video shadow-2xl">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -773,31 +775,43 @@ const MeetingRoom = () => {
             ))}
           </div>
 
-          {/* Transcript Box */}
-          <div className="mx-4 mb-2">
-            <button
-              onClick={isTranscribing ? stopTranscription : startTranscription}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm mb-2 font-semibold transition cursor-pointer ${
-                isTranscribing
-                  ? "bg-red-600/90 hover:bg-red-600"
-                  : "bg-emerald-600/90 hover:bg-emerald-600"
-              }`}
-            >
-              <Captions className="h-4 w-4" />
-              {isTranscribing
-                ? "Stop live transcription"
-                : "Start live transcription"}
-            </button>
-            <textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Transcript will appear here (or paste manually for AI summary)..."
-              className="w-full bg-slate-900/70 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-500/50 resize-none h-24 lg:h-28 transition"
-            />
+          {/* Transcript Section */}
+          <div className="mx-4 mb-2 shrink-0">
+            <div className="flex gap-2 mb-2 flex-wrap">
+              <button
+                onClick={isTranscribing ? stopTranscription : startTranscription}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition cursor-pointer ${
+                  isTranscribing
+                    ? "bg-red-600/90 hover:bg-red-600"
+                    : "bg-emerald-600/90 hover:bg-emerald-600"
+                }`}
+              >
+                <Captions className="h-4 w-4" />
+                {isTranscribing
+                  ? "Stop live transcription"
+                  : "Start live transcription"}
+              </button>
+
+              <button
+                onClick={() => setShowTranscript((prev) => !prev)}
+                className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 transition cursor-pointer"
+              >
+                {showTranscript ? "Hide transcript" : "Show transcript"}
+              </button>
+            </div>
+
+            {showTranscript && (
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Transcript will appear here (or paste manually for AI summary)..."
+                className="w-full bg-slate-900/70 border border-slate-800 text-slate-300 text-xs rounded-xl px-3 py-2 outline-none focus:border-blue-500/50 resize-none h-24 lg:h-28 transition"
+              />
+            )}
           </div>
 
           {/* Controls */}
-          <div className="bg-slate-900/70 backdrop-blur-xl border-t border-slate-800 py-5 flex justify-center items-center gap-5 flex-wrap px-4">
+          <div className="bg-slate-900/70 backdrop-blur-xl border-t border-slate-800 py-3 sm:py-5 flex justify-center items-center gap-3 sm:gap-5 flex-wrap px-3 sm:px-4 shrink-0">
             {/* Group 1: Basic media controls */}
             <div className="flex gap-3 flex-wrap justify-center">
               <button
@@ -1006,7 +1020,7 @@ const RemoteVideo = ({ stream, userName, peerId, registerRef }) => {
   }, [peerId, registerRef]);
 
   return (
-    <div className="relative bg-slate-900 border border-slate-800 rounded-3xl  overflow-hidden aspect-video shadow-2x1">
+    <div className="relative bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden aspect-video shadow-2xl">
       <video
         ref={videoRef}
         autoPlay
