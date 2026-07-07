@@ -508,7 +508,7 @@ const Header = memo(function Header({
   leaveMeeting,
 }) {
   return (
-    <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-6  flex justify-between items-center gap-3 flex-wrap shrink-0 sticky top-0 z-30">
+    <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-6 py-4 flex justify-between items-center gap-3 flex-wrap shrink-0 sticky top-0 z-30">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
           {meeting.title}
@@ -594,9 +594,7 @@ const MeetingRoom = () => {
   const recognitionRef = useRef(null);
   const isTranscribingRef = useRef(false);
   const remoteVideoRefs = useRef(new Map());
-  const recordingCanvasRef = useRef(null);
-  const recordingAnimationRef = useRef(null);
-  const canvasStreamRef = useRef(null);
+  const screenRecordStreamRef = useRef(null); // poore tab/page ka capture stream (Record button ke liye)
   const audioContextRef = useRef(null);
   const audioDestinationRef = useRef(null);
   const connectedAudioSourcesRef = useRef(new Set());
@@ -768,6 +766,12 @@ const MeetingRoom = () => {
         socket.on("receive-message", (data) => {
           setMessages((prev) => [...prev, { type: "chat", ...data }]);
         });
+
+        // Saamne wale participant ki transcription humare transcript me merge karne ke liye
+        socket.on("transcript-line", ({ userName: speakerName, text }) => {
+          if (speakerName === userName) return; // apna khud ka avoid — wo already local se add ho chuka hai
+          setTranscript((prev) => `${prev}${speakerName}: ${text}`);
+        });
       } catch (err) {
         console.error("Init error:", err);
         toast.error("Camera/mic access denied!");
@@ -788,10 +792,10 @@ const MeetingRoom = () => {
       socket.off("user-left");
       socket.off("room-users");
       socket.off("receive-message");
+      socket.off("transcript-line");
       socket.disconnect();
       clearInterval(recordingTimerRef.current);
-      if (recordingAnimationRef.current) cancelAnimationFrame(recordingAnimationRef.current);
-      canvasStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenRecordStreamRef.current?.getTracks().forEach((t) => t.stop());
 
       // Heavy WebRTC / AudioContext teardown ko agle tick pe defer karo —
       // isse navigate() ke turant baad ka paint block nahi hota, aur
@@ -824,7 +828,14 @@ const MeetingRoom = () => {
     });
   }, [remoteStreams, recording]);
 
-  
+  // ------------------------------------------------------------
+  // Handlers — useCallback se wrap kiya gaya hai taaki memoized
+  // child components (Header, ControlsBar, ChatSidebar, etc.) ko
+  // stable function references milein aur unka memo() kaam kare.
+  // Agar yeh plain functions hote, to har render pe naya reference
+  // banta aur memo bekar ho jata.
+  // ------------------------------------------------------------
+
   const sendMessage = useCallback(() => {
     setInput((currentInput) => {
       if (!currentInput.trim()) return currentInput;
@@ -943,7 +954,13 @@ const MeetingRoom = () => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) finalText += event.results[i][0].transcript + " ";
       }
-      if (finalText) setTranscript((prev) => prev + finalText);
+      if (finalText) {
+        setTranscript((prev) => `${prev}${userName}: ${finalText}`);
+        // Apni transcription baaki participants ko bhi bhejo, taaki unke transcript me
+        // yeh line merge ho jaye — Speech Recognition sirf local mic sunta hai, isliye
+        // remote participant ka bola hua khud-b-khud transcript me nahi aata.
+        socket.emit("transcript-line", { meetingId: id, userName, text: finalText });
+      }
     };
 
     recognition.onerror = (e) => {
@@ -964,7 +981,7 @@ const MeetingRoom = () => {
     setIsTranscribing(true);
     setShowTranscript(true);
     toast.success("Live transcription started");
-  }, []);
+  }, [id, userName]);
 
   const stopTranscription = useCallback(() => {
     isTranscribingRef.current = false;
@@ -972,16 +989,22 @@ const MeetingRoom = () => {
     setIsTranscribing(false);
   }, []);
 
-  const startRecording = useCallback(() => {
+  const startRecording = useCallback(async () => {
     try {
       recordedChunksRef.current = [];
 
-      const canvas = document.createElement("canvas");
-      canvas.width = 1280;
-      canvas.height = 720;
-      const ctx = canvas.getContext("2d");
-      recordingCanvasRef.current = canvas;
+      // Poore tab/page ko capture karo — video tiles, chat sidebar, buttons,
+      // Tasks panel sab kuch jo screen pe dikh raha hai, wahi record hoga.
+      // Browser ek confirmation dialog dikhayega; preferCurrentTab isi tab
+      // ko pehle se select karke dikhata hai (Chrome 104+).
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser", frameRate: 30 },
+        audio: false,
+        preferCurrentTab: true,
+      });
+      screenRecordStreamRef.current = displayStream;
 
+      // Audio mixing: apna mic + sab remote participants ka audio ek stream me combine karo
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const destination = audioContext.createMediaStreamDestination();
       audioContextRef.current = audioContext;
@@ -1004,46 +1027,8 @@ const MeetingRoom = () => {
         }
       });
 
-      const drawFrame = () => {
-        const tiles = [
-          { el: localVideoRef.current, label: "You" },
-          ...Array.from(remoteVideoRefs.current.entries()).map(([peerId, el]) => ({
-            el,
-            label: remoteStreams.find((r) => r.peerId === peerId)?.userName || "Participant",
-          })),
-        ].filter((t) => t.el && t.el.videoWidth > 0);
-
-        const cols = Math.ceil(Math.sqrt(tiles.length)) || 1;
-        const rows = Math.ceil(tiles.length / cols) || 1;
-        const cellW = canvas.width / cols;
-        const cellH = canvas.height / rows;
-
-        ctx.fillStyle = "#0f172a";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        tiles.forEach((tile, i) => {
-          const x = (i % cols) * cellW;
-          const y = Math.floor(i / cols) * cellH;
-          try {
-            ctx.drawImage(tile.el, x, y, cellW, cellH);
-          } catch (err) {}
-          ctx.font = "14px sans-serif";
-          const labelWidth = ctx.measureText(tile.label).width + 16;
-          ctx.fillStyle = "rgba(0,0,0,0.6)";
-          ctx.fillRect(x + 8, y + cellH - 30, labelWidth, 22);
-          ctx.fillStyle = "#ffffff";
-          ctx.fillText(tile.label, x + 16, y + cellH - 14);
-        });
-
-        recordingAnimationRef.current = requestAnimationFrame(drawFrame);
-      };
-      drawFrame();
-
-      const canvasStream = canvas.captureStream(30);
-      canvasStreamRef.current = canvasStream;
-
       const combinedStream = new MediaStream([
-        ...canvasStream.getVideoTracks(),
+        ...displayStream.getVideoTracks(),
         ...destination.stream.getAudioTracks(),
       ]);
 
@@ -1065,16 +1050,28 @@ const MeetingRoom = () => {
         toast.success("Recording downloaded");
       };
 
+      // Agar user browser ke apne "Stop sharing" button se rok de, to
+      // recording bhi automatically ruk jaye
+      displayStream.getVideoTracks()[0].onended = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+          stopRecording();
+        }
+      };
+
       mediaRecorder.start();
       setRecording(true);
       setRecordingSeconds(0);
       recordingTimerRef.current = setInterval(() => {
         setRecordingSeconds((s) => s + 1);
       }, 1000);
-      toast.success("Recording started — poori meeting record ho rahi hai");
+      toast.success("Recording started — poora page record ho raha hai");
     } catch (err) {
       console.error("Recording start error:", err);
-      toast.error("Recording start nahi ho payi");
+      if (err.name === "NotAllowedError") {
+        toast.error("Recording shuru karne ke liye screen access allow karna zaroori hai");
+      } else {
+        toast.error("Recording start nahi ho payi");
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remoteStreams]);
@@ -1082,12 +1079,9 @@ const MeetingRoom = () => {
   const stopRecording = useCallback(() => {
     mediaRecorderRef.current?.stop();
 
-    if (recordingAnimationRef.current) {
-      cancelAnimationFrame(recordingAnimationRef.current);
-      recordingAnimationRef.current = null;
-    }
-    canvasStreamRef.current?.getTracks().forEach((t) => t.stop());
-    canvasStreamRef.current = null;
+    screenRecordStreamRef.current?.getTracks().forEach((t) => t.stop());
+    screenRecordStreamRef.current = null;
+
     audioContextRef.current?.close();
     audioContextRef.current = null;
     audioDestinationRef.current = null;
@@ -1106,8 +1100,7 @@ const MeetingRoom = () => {
 
     if (recording) {
       mediaRecorderRef.current?.stop();
-      if (recordingAnimationRef.current) cancelAnimationFrame(recordingAnimationRef.current);
-      canvasStreamRef.current?.getTracks().forEach((t) => t.stop());
+      screenRecordStreamRef.current?.getTracks().forEach((t) => t.stop());
       clearInterval(recordingTimerRef.current);
     }
 
