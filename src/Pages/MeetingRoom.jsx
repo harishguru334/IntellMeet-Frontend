@@ -508,9 +508,9 @@ const Header = memo(function Header({
   leaveMeeting,
 }) {
   return (
-    <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-6 py-4 flex justify-between items-center gap-3 flex-wrap shrink-0 sticky top-0 z-30">
+    <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-6  flex justify-between items-center gap-3 flex-wrap shrink-0 sticky top-0 z-30">
       <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
+        <h1 className="text-1 font-bold text-white flex items-center ">
           {meeting.title}
           {isHost && (
             <span className="flex items-center gap-1 bg-indigo-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
@@ -824,14 +824,7 @@ const MeetingRoom = () => {
     });
   }, [remoteStreams, recording]);
 
-  // ------------------------------------------------------------
-  // Handlers — useCallback se wrap kiya gaya hai taaki memoized
-  // child components (Header, ControlsBar, ChatSidebar, etc.) ko
-  // stable function references milein aur unka memo() kaam kare.
-  // Agar yeh plain functions hote, to har render pe naya reference
-  // banta aur memo bekar ho jata.
-  // ------------------------------------------------------------
-
+  
   const sendMessage = useCallback(() => {
     setInput((currentInput) => {
       if (!currentInput.trim()) return currentInput;
