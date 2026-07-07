@@ -65,7 +65,7 @@ const Navbar = () => {
             Logout
           </button>
 
-          {/* Hamburger button - Mobile only */}
+          
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="sm:hidden text-white text-2xl px-2"

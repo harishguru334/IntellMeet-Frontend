@@ -508,7 +508,7 @@ const Header = memo(function Header({
   leaveMeeting,
 }) {
   return (
-    <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-6 py-4 flex justify-between items-center gap-3 flex-wrap shrink-0 sticky top-0 z-30">
+    <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-6  flex justify-between items-center gap-3 flex-wrap shrink-0 sticky top-0 z-30">
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
           {meeting.title}
@@ -569,9 +569,6 @@ const Header = memo(function Header({
   );
 });
 
-/* ============================================================
-   MAIN COMPONENT
-   ============================================================ */
 
 const MeetingRoom = () => {
   const [recording, setRecording] = useState(false);
@@ -594,7 +591,7 @@ const MeetingRoom = () => {
   const recognitionRef = useRef(null);
   const isTranscribingRef = useRef(false);
   const remoteVideoRefs = useRef(new Map());
-  const screenRecordStreamRef = useRef(null); // poore tab/page ka capture stream (Record button ke liye)
+  const screenRecordStreamRef = useRef(null); 
   const audioContextRef = useRef(null);
   const audioDestinationRef = useRef(null);
   const connectedAudioSourcesRef = useRef(new Set());
@@ -639,7 +636,7 @@ const MeetingRoom = () => {
     fetchMeeting();
   }, [id]);
 
-  // Quick tasks fetch (sidebar "Tasks" section ke liye)
+  // Quick tasks fetch
   useEffect(() => {
     const fetchTasks = async () => {
       try {
@@ -777,8 +774,7 @@ const MeetingRoom = () => {
           setTranscript((prev) => `${prev}${speakerName}: ${text}`);
         });
 
-        // Jab koi ek participant AI summary generate kare, sabko dikha do —
-        // call yahan bilkul touch nahi hoti, sirf modal khulta hai
+        
         socket.on("summary-ready", (data) => {
           setSummaryData(data);
           setShowSummaryModal(true);
@@ -797,7 +793,7 @@ const MeetingRoom = () => {
       isTranscribingRef.current = false;
       recognitionRef.current?.stop();
 
-      // Critical / cheap cleanup turant — inhe delay karne ki zaroorat nahi
+      
       localStreamRef.current?.getTracks().forEach((t) => t.stop());
       screenStreamRef.current?.getTracks().forEach((t) => t.stop());
       socket.off("user-peer-id");
@@ -810,9 +806,6 @@ const MeetingRoom = () => {
       clearInterval(recordingTimerRef.current);
       screenRecordStreamRef.current?.getTracks().forEach((t) => t.stop());
 
-      // Heavy WebRTC / AudioContext teardown ko agle tick pe defer karo —
-      // isse navigate() ke turant baad ka paint block nahi hota, aur
-      // click se "View all" jaise navigation buttons turant respond karte hain.
       const peerToDestroy = peerRef.current;
       const audioCtxToClose = audioContextRef.current;
       setTimeout(() => {
@@ -841,13 +834,7 @@ const MeetingRoom = () => {
     });
   }, [remoteStreams, recording]);
 
-  // ------------------------------------------------------------
-  // Handlers — useCallback se wrap kiya gaya hai taaki memoized
-  // child components (Header, ControlsBar, ChatSidebar, etc.) ko
-  // stable function references milein aur unka memo() kaam kare.
-  // Agar yeh plain functions hote, to har render pe naya reference
-  // banta aur memo bekar ho jata.
-  // ------------------------------------------------------------
+ 
 
   const sendMessage = useCallback(() => {
     setInput((currentInput) => {
@@ -930,7 +917,7 @@ const MeetingRoom = () => {
     } catch (err) {
       console.error("Screen share error:", err);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   const stopScreenShare = useCallback(() => {
@@ -969,9 +956,7 @@ const MeetingRoom = () => {
       }
       if (finalText) {
         setTranscript((prev) => `${prev}${userName}: ${finalText}`);
-        // Apni transcription baaki participants ko bhi bhejo, taaki unke transcript me
-        // yeh line merge ho jaye — Speech Recognition sirf local mic sunta hai, isliye
-        // remote participant ka bola hua khud-b-khud transcript me nahi aata.
+       
         socket.emit("transcript-line", { meetingId: id, userName, text: finalText });
       }
     };
@@ -1006,10 +991,7 @@ const MeetingRoom = () => {
     try {
       recordedChunksRef.current = [];
 
-      // Poore tab/page ko capture karo — video tiles, chat sidebar, buttons,
-      // Tasks panel sab kuch jo screen pe dikh raha hai, wahi record hoga.
-      // Browser ek confirmation dialog dikhayega; preferCurrentTab isi tab
-      // ko pehle se select karke dikhata hai (Chrome 104+).
+     
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: { displaySurface: "browser", frameRate: 30 },
         audio: false,
@@ -1120,8 +1102,7 @@ const MeetingRoom = () => {
     socket.disconnect();
     navigate("/dashboard");
 
-    // Heavy teardown (PeerJS destroy + AudioContext close) ko navigate
-    // ke baad, agle tick me defer karo — taaki route change turant ho.
+    
     const peerToDestroy = peerRef.current;
     const audioCtxToClose = audioContextRef.current;
     setTimeout(() => {
@@ -1146,11 +1127,7 @@ const MeetingRoom = () => {
       .catch(() => toast.error("Couldn't copy code"));
   }, [meeting]);
 
-  // Pehle ye navigate() karke /summary route pe le jaata tha — jisse MeetingRoom
-  // unmount ho jaati thi aur uska cleanup peer/socket destroy kar deta tha (call cut ho jaati).
-  // Ab summary yahin ek modal me generate hoti hai — call chalti rehti hai, aur
-  // "summary-ready" socket event se doosre participants ko bhi (unki call disturb kiye
-  // bina) wahi summary dikh jaati hai.
+  
   const generateSummaryInPlace = useCallback(async () => {
     if (!transcript.trim()) {
       toast.error("Transcript khaali hai — pehle live transcription start karo ya manually likho.");
