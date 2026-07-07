@@ -4,6 +4,7 @@ import KanbanBoard from "./Pages/Kabanboard";
 import MeetingDetail from "./Pages/MeetinDetail";
 import MeetingRoom from "./Pages/MeetingRoom";
 import MeetingSummary from "./Pages/MeetingSummary";
+import MeetingTasks from "./Pages/MeetingTasks";
 import Login from "./Pages/Login";
 import SignUp from "./Pages/SignUp";
 import ProtectedRoute from "./Components/ProtectedRoute";
@@ -34,6 +35,16 @@ function App() {
         element={
           <ProtectedRoute>
             <MeetingSummary />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Meeting tasks — no navbar */}
+      <Route
+        path="/meeting/:id/tasks"
+        element={
+          <ProtectedRoute>
+            <MeetingTasks />
           </ProtectedRoute>
         }
       />

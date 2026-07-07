@@ -184,7 +184,7 @@ const ControlsBar = memo(function ControlsBar({
   recording,
   startRecording,
   stopRecording,
-  goToSummary,
+  generateSummaryInPlace,
   leaveMeeting,
 }) {
   return (
@@ -230,7 +230,7 @@ const ControlsBar = memo(function ControlsBar({
       </button>
 
       <button
-        onClick={goToSummary}
+        onClick={generateSummaryInPlace}
         className="flex items-center gap-2 rounded-full bg-linear-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold shadow-lg shadow-blue-900/30 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-indigo-500 cursor-pointer"
       >
         <Sparkles className="h-4 w-4" />
@@ -615,6 +615,10 @@ const MeetingRoom = () => {
   const [transcript, setTranscript] = useState("");
   const [participants, setParticipants] = useState([]);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryData, setSummaryData] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
 
   const isHost = meeting && userId && String(meeting.host) === String(userId);
 
@@ -772,6 +776,14 @@ const MeetingRoom = () => {
           if (speakerName === userName) return; // apna khud ka avoid — wo already local se add ho chuka hai
           setTranscript((prev) => `${prev}${speakerName}: ${text}`);
         });
+
+        // Jab koi ek participant AI summary generate kare, sabko dikha do —
+        // call yahan bilkul touch nahi hoti, sirf modal khulta hai
+        socket.on("summary-ready", (data) => {
+          setSummaryData(data);
+          setShowSummaryModal(true);
+          toast.success("AI summary is ready");
+        });
       } catch (err) {
         console.error("Init error:", err);
         toast.error("Camera/mic access denied!");
@@ -793,6 +805,7 @@ const MeetingRoom = () => {
       socket.off("room-users");
       socket.off("receive-message");
       socket.off("transcript-line");
+      socket.off("summary-ready");
       socket.disconnect();
       clearInterval(recordingTimerRef.current);
       screenRecordStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -1133,9 +1146,39 @@ const MeetingRoom = () => {
       .catch(() => toast.error("Couldn't copy code"));
   }, [meeting]);
 
-  const goToSummary = useCallback(() => {
-    navigate(`/meeting/${id}/summary?transcript=${encodeURIComponent(transcript)}`);
-  }, [navigate, id, transcript]);
+  // Pehle ye navigate() karke /summary route pe le jaata tha — jisse MeetingRoom
+  // unmount ho jaati thi aur uska cleanup peer/socket destroy kar deta tha (call cut ho jaati).
+  // Ab summary yahin ek modal me generate hoti hai — call chalti rehti hai, aur
+  // "summary-ready" socket event se doosre participants ko bhi (unki call disturb kiye
+  // bina) wahi summary dikh jaati hai.
+  const generateSummaryInPlace = useCallback(async () => {
+    if (!transcript.trim()) {
+      toast.error("Transcript khaali hai — pehle live transcription start karo ya manually likho.");
+      return;
+    }
+    setShowSummaryModal(true);
+    setSummaryLoading(true);
+    setSummaryError("");
+    try {
+      const { data } = await API.post("/ai/summarize", { transcript });
+      setSummaryData(data);
+
+      await API.put(`/meetings/${id}/summary`, {
+        summary: data.summary,
+        keyPoints: data.keyPoints,
+        actionItems: data.actionItems,
+        transcript,
+      });
+
+      // Sabko bhej do — unki call ko haath nahi lagta, bas unka modal khul jaata hai
+      socket.emit("summary-ready", { meetingId: id, summary: data });
+    } catch (err) {
+      console.error("Summary generation error:", err);
+      setSummaryError("Something went wrong while generating the summary.");
+    } finally {
+      setSummaryLoading(false);
+    }
+  }, [transcript, id]);
 
   const goToTasksPage = useCallback(() => {
     navigate(`/meeting/${id}/tasks`);
@@ -1208,7 +1251,7 @@ const MeetingRoom = () => {
             recording={recording}
             startRecording={startRecording}
             stopRecording={stopRecording}
-            goToSummary={goToSummary}
+            generateSummaryInPlace={generateSummaryInPlace}
             leaveMeeting={leaveMeeting}
           />
 
@@ -1238,9 +1281,98 @@ const MeetingRoom = () => {
           goToTasksPage={goToTasksPage}
         />
       </div>
+
+      {showSummaryModal && (
+        <SummaryModal
+          loading={summaryLoading}
+          error={summaryError}
+          summary={summaryData}
+          onClose={() => setShowSummaryModal(false)}
+        />
+      )}
     </div>
   );
 };
+
+// AI summary modal — overlay hi hai, isliye peer/socket/call bilkul unaffected rehte hain
+const SummaryModal = memo(function SummaryModal({ loading, error, summary, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
+        <div className="flex justify-between items-center p-5 border-b border-slate-800 sticky top-0 bg-slate-900">
+          <h2 className="flex items-center gap-2 text-lg font-bold">
+            <Sparkles className="h-5 w-5 text-blue-400" />
+            AI Meeting Summary
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-slate-500 hover:text-white transition cursor-pointer"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {loading && (
+            <div className="text-center py-8">
+              <Sparkles className="h-8 w-8 mx-auto mb-3 text-blue-400 animate-pulse" />
+              <p className="text-slate-400 text-sm">Generating summary — meeting chalti rahegi...</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-900/30 border border-red-500/50 rounded-xl p-4 text-red-300 text-sm text-center">
+              {error}
+            </div>
+          )}
+
+          {summary && !loading && (
+            <>
+              <div>
+                <h3 className="text-blue-400 font-semibold text-sm mb-2">Summary</h3>
+                <p className="text-slate-300 text-sm leading-relaxed">{summary.summary}</p>
+              </div>
+
+              {summary.keyPoints?.length > 0 && (
+                <div>
+                  <h3 className="text-emerald-400 font-semibold text-sm mb-2">Key Points</h3>
+                  <ul className="space-y-1.5">
+                    {summary.keyPoints.map((point, i) => (
+                      <li key={i} className="text-slate-300 text-sm flex items-start gap-2">
+                        <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-emerald-400" />
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {summary.actionItems?.length > 0 && (
+                <div>
+                  <h3 className="text-purple-400 font-semibold text-sm mb-2">Action Items</h3>
+                  <div className="space-y-2">
+                    {summary.actionItems.map((item, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between items-center bg-slate-800/70 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+                      >
+                        <span className="text-slate-300">{item.task}</span>
+                        <span className="text-purple-300 text-xs font-semibold bg-purple-900/30 px-2 py-1 rounded-lg shrink-0 ml-2">
+                          {item.assignee}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const RemoteVideo = memo(function RemoteVideo({ stream, userName, peerId, registerRef }) {
   const videoRef = useRef(null);
