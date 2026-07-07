@@ -1271,7 +1271,7 @@ const MeetingRoom = () => {
   );
 };
 
-// AI summary modal — overlay hi hai, isliye peer/socket/call bilkul unaffected rehte hain
+
 const SummaryModal = memo(function SummaryModal({ loading, error, summary, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">

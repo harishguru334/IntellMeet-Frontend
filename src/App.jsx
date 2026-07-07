@@ -15,11 +15,11 @@ import OAuthSuccess from "./Pages/OauthSuccess.jsx";
 function App() {
   return (
     <Routes>
-      {/* Auth pages — no navbar */}
+     
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
 
-      {/* Meeting Room — no navbar */}
+     
       <Route
         path="/meeting/:id"
         element={
@@ -29,7 +29,7 @@ function App() {
         }
       />
 
-      {/* Summary — no navbar */}
+     
       <Route
         path="/meeting/:id/summary"
         element={
@@ -39,7 +39,7 @@ function App() {
         }
       />
 
-      {/* Meeting tasks — no navbar */}
+   
       <Route
         path="/meeting/:id/tasks"
         element={
@@ -49,7 +49,7 @@ function App() {
         }
       />
 
-      {/* Pages with Navbar */}
+    
       <Route
         path="/dashboard"
         element={

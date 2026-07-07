@@ -49,8 +49,7 @@ const Dashboard = () => {
     }
   };
 
-  // Join a meeting shared by someone else — accepts a meeting code
-  // (e.g. "A1B2C3D4") or a full pasted invite link.
+  
   const joinMeeting = async () => {
     if (!joinCode.trim()) return;
     setJoinLoading(true);
@@ -58,7 +57,6 @@ const Dashboard = () => {
       let code = joinCode.trim();
       const linkMatch = code.match(/\/meeting\/([a-zA-Z0-9]+)/);
       if (linkMatch) {
-        // Full link pasted (e.g. https://app.com/meeting/<id>) — go straight there.
         navigate(`/meeting/${linkMatch[1]}`);
         return;
       }
