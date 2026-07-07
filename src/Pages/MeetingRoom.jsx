@@ -510,7 +510,7 @@ const Header = memo(function Header({
   return (
     <div className="bg-slate-900/70 backdrop-blur-xl border-b border-slate-800 px-6  flex justify-between items-center gap-3 flex-wrap shrink-0 sticky top-0 z-30">
       <div>
-        <h1 className="text-[40px] my-[10px] font-bold text-white flex items-center ">
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
           {meeting.title}
           {isHost && (
             <span className="flex items-center gap-1 bg-indigo-600 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
