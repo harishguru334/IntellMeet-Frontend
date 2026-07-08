@@ -140,20 +140,28 @@ VITE_API_URL=https://intellmeet-backend-hf1k.onrender.com/api
 ### Login
 ![Login](./public//screenshots/login-page.png)
 
+### Login
+![SignUp](./public//screenshots/SignUp-Page%20(2).png)
+
 ### Dashboard
 ![Dashboard](./public//screenshots/dashboard-overview.png)
 
 ### Meeting Room
-![Meeting Room](./public//screenshots/meeting-room.png)
+![Meeting Room](./public//screenshots/Meeting%20Room.png)
+
+### My Meeting 
+![ My Meeting ](./public/screenshots//My%20Meeting%20Page.png)
 
 ### Meeting Chat
-![Meeting Chat](./public//screenshots/meeting-room-chat.png)
+![Meeting Chat](./public/screenshots//meeting-room-chat.png)
 
 ### Kanban Board
-![Kanban](./public//screenshots/kanban-board.png)
+![Kanban](./public//screenshots/kanban-overview.png)
 
 ### Analytics
-![Analytics](./public//screenshots/analytics-overview.png)
+![Analytics](./public/screenshots/analytics-insights.png)
+
+---
 
 ## 📦 Build
 
