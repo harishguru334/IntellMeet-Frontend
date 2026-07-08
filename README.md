@@ -140,9 +140,6 @@ VITE_API_URL=https://intellmeet-backend-hf1k.onrender.com/api
 ### Login
 ![Login](./public//screenshots/login-page.png)
 
-### Login
-![SignUp](./public//screenshots/SignUp-Page%20(2).png)
-
 ### Dashboard
 ![Dashboard](./public//screenshots/dashboard-overview.png)
 
