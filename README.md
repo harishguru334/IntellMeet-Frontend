@@ -1,68 +1,78 @@
-# 🚀 IntellMeet Frontend
+# 🚀 IntellMeet - Frontend
 
-The frontend of **IntellMeet – AI Powered Enterprise Meeting & Collaboration Platform**, built using React.js and Vite. It provides a modern user interface for authentication, video meetings, AI-powered collaboration, task management, and analytics.
+An AI-powered real-time meeting and collaboration platform built with the MERN Stack. IntellMeet enables users to conduct secure video meetings, collaborate in real time, generate AI-powered meeting summaries, manage tasks, and analyze productivity.
 
 ---
 
-## ✨ Features
+## 📌 Features
 
-- 🔐 User Authentication (Login & Register)
-- 🏠 Dashboard
-- 📅 Create & Join Meetings
-- 🎥 WebRTC Video Calling
-- 💬 Real-Time Chat (Socket.io)
+- 🔐 JWT Authentication
+- 🔑 Google OAuth Login
+- 🎥 Real-time Video Meetings
+- 💬 Live Chat
+- 🖥️ Screen Sharing
 - 🤖 AI Meeting Summary
-- 📋 Kanban Task Board
+- 📝 Live Transcription
+- ✅ Meeting Task Management
+- 📋 Kanban Board
 - 📊 Analytics Dashboard
-- 🔒 Protected Routes
-- 📱 Responsive UI
+- 📱 Responsive Design
 
 ---
 
-## 🛠 Tech Stack
+## 🛠️ Tech Stack
 
 - React.js
 - Vite
 - Tailwind CSS
 - React Router DOM
 - Axios
-- Socket.io Client
+- Socket.IO Client
+- PeerJS
+- Lucide React
 - React Hot Toast
-- React Icons
 
 ---
 
-## 📁 Folder Structure
+## 📂 Folder Structure
 
-```
-src/
+```text
+src
 │
-├── components/
-├── pages/
-├── context/
-├── hooks/
-├── services/
-├── utils/
-└── App.jsx
+├── Api
+├── Assets
+├── Components
+├── Context
+├── Pages
+├── Socket
+├── App.jsx
+├── main.jsx
+└── index.css
 ```
 
 ---
 
 ## ⚙️ Installation
 
-Clone Repository
+### Clone Repository
 
 ```bash
-git clone https://github.com/harishguru334/IntellMeet-Frontend.git
+git clone:- https://github.com/harishguru334/IntellMeet-Frontend
 ```
 
-Install Dependencies
+### Go to Project Folder
+
+```bash
+cd IntellMeet
+```
+
+### Install Dependencies
 
 ```bash
 npm install
 ```
 
-Run Project
+### Start Development Server
 
 ```bash
 npm run dev
@@ -70,52 +80,92 @@ npm run dev
 
 ---
 
-## 🔑 Environment Variables
+## 🌍 Environment Variables
 
-Create a `.env` file.
+Create a `.env` file in the root directory.
 
 ```env
-VITE_API_URL=YOUR_BACKEND_URL/api
+VITE_API_URL=https://intellmeet-backend-hf1k.onrender.com/api
 ```
+
+---
+
+## 🚀 Main Features
+
+### Authentication
+
+- User Registration
+- User Login
+- Google OAuth
+- JWT Authentication
+- Protected Routes
+
+### Dashboard
+
+- Create Meeting
+- Join Meeting
+- Meeting History
+
+### Meeting Room
+
+- Video Calling
+- Audio Controls
+- Screen Sharing
+- Live Chat
+- Participant List
+
+### AI Features
+
+- Live Transcription
+- AI Meeting Summary
+- Action Items Extraction
+
+### Task Management
+
+- Create Tasks
+- Update Task Status
+- Kanban Board
+
+### Analytics
+
+- Total Meetings
+- AI Summaries
+- Task Statistics
+- Productivity Insights
 
 ---
 
 ## 📸 Screenshots
 
-- Login
+- Login Page
 - Dashboard
 - Meeting Room
 - AI Summary
 - Kanban Board
 - Analytics
 
-(Add screenshots here)
+---
+
+## 📦 Build
+
+```bash
+npm run build
+```
 
 ---
 
-## 🌐 Live Demo
+## 🚀 Deployment
 
-Frontend:
-(Add your Vercel URL)
-
-Backend:
-(Add your Render URL)
+Frontend is deployed on **vercel**.
 
 ---
 
-## 🚀 Future Improvements
+## 👨‍💻 Author
 
-- Screen Sharing
-- Meeting Recording
-- File Sharing
-- Dark Mode
-- Push Notifications
+**Harish Garg**
 
 ---
 
-## 👨‍💻 Developer
+## 📄 License
 
-Harish Guru
-
-GitHub:
-https://github.com/harishguru334
+This project was developed as part of the **Zidio Development Internship Program**.
